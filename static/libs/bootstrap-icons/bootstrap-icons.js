@@ -1,0 +1,1 @@
+/* Bootstrap Icons JS would go here in a real implementation */

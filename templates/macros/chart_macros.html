@@ -1,0 +1,69 @@
+{% macro render_chart_section(chart_data, surface_name, chart_title_prefix, is_single_surface=false) %}
+    {% if chart_data %}
+    <!-- 显示所有选中的图表类型 -->
+    {% for chart_type, chart_files in chart_data.items() %}
+    <div class="chart-container">
+        <h6 class="font-weight-bold">{{ chart_title_prefix }}{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
+        <div class="chart-img-container text-center">
+            <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img img-fluid" alt="{{ surface_name }}面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="{{ chart_title_prefix }}{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}" style="max-width: 100%; height: auto; cursor: pointer;">
+        </div>
+        <div class="mt-2">
+            {% for other_chart_type, other_chart_files in chart_data.items() %}
+                {% if other_chart_type != chart_type %}
+                    <span class="badge bg-secondary chart-type-badge">{{ other_chart_type }}</span>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <div class="text-center mt-2">
+            <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-secondary me-2" target="_blank">
+                <i class="bi bi-download me-1"></i>下载PNG
+            </a>
+            <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-secondary chart-link" target="_blank">
+                <i class="bi bi-download me-1"></i>下载HTML（可交互）
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+{% endmacro %}
+
+{% macro render_parallel_chart_section(chart_data, surface_name, chart_title_prefix) %}
+    {% if chart_data %}
+    <!-- 显示所有选中的图表类型 -->
+    {% for chart_type, chart_files in chart_data.items() %}
+    <div class="chart-container h-100">
+        <h6 class="font-weight-bold">{{ chart_title_prefix }}{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
+        <div class="chart-img-container text-center">
+            <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img img-fluid" alt="{{ surface_name }}面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="{{ chart_title_prefix }}{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}" style="max-width: 100%; height: auto; cursor: pointer;">
+        </div>
+        <div class="mt-2">
+            {% for other_chart_type, other_chart_files in chart_data.items() %}
+                {% if other_chart_type != chart_type %}
+                    <span class="badge bg-secondary chart-type-badge">{{ other_chart_type }}</span>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <div class="text-center mt-2">
+            <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-secondary me-2" target="_blank">
+                <i class="bi bi-download me-1"></i>下载PNG
+            </a>
+            <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-secondary chart-link" target="_blank">
+                <i class="bi bi-download me-1"></i>下载HTML（可交互）
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+{% endmacro %}
+
+{% macro render_chart_container(chart_items, container_class, container_id="", is_parallel=false) %}
+<div class="{{ container_class }}{% if not is_parallel %} d-none{% endif %}" {% if container_id %}id="{{ container_id }}"{% endif %}>
+    {% for item in chart_items %}
+        {% if is_parallel %}
+            {{ render_parallel_chart_section(item.chart_data, item.surface_name, item.title_prefix) }}
+        {% else %}
+            {{ render_chart_section(item.chart_data, item.surface_name, item.title_prefix) }}
+        {% endif %}
+    {% endfor %}
+</div>
+{% endmacro %}

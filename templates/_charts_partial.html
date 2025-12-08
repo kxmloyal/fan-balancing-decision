@@ -1,0 +1,162 @@
+{% from 'macros/chart_macros.html' import render_chart_section, render_parallel_chart_section %}
+
+<!-- 图表区域 -->
+<div class="chart-stacked">
+    <h6 class="text-primary mb-3"><i class="bi bi-bar-chart me-2"></i>数据图表</h6>
+    
+    <!-- P1面图 -->
+    {% if has_p1 %}
+        {{ render_chart_section(plots.p1, 'P1', 'P1面不平衡量') }}
+        <hr>
+    {% endif %}
+    
+    <!-- P2面图 -->
+    {% if has_p2 %}
+        {{ render_chart_section(plots.p2, 'P2', 'P2面不平衡量') }}
+        <hr>
+    {% endif %}
+    
+    <!-- ST面图（仅当上传了ST面时显示） -->
+    {% if has_st %}
+        {{ render_chart_section(plots.sum, 'ST', 'ST面不平衡量') }}
+        <hr>
+    {% endif %}
+    
+    <!-- 单面图（仅上传一个面时） -->
+    {% if plots.single %}
+        {% if saved_results.single_surface == 'p1' %}
+            {% set single_surface_title = 'P1面不平衡量' %}
+        {% elif saved_results.single_surface == 'p2' %}
+            {% set single_surface_title = 'P2面不平衡量' %}
+        {% elif saved_results.single_surface == 'st' %}
+            {% set single_surface_title = 'ST面不平衡量' %}
+        {% else %}
+            {% set single_surface_title = '单面不平衡量' %}
+        {% endif %}
+        {{ render_chart_section(plots.single, '单', single_surface_title) }}
+        <hr>
+    {% endif %}
+</div>
+
+<!-- 并列显示图表区域 -->
+<div class="chart-parallel d-none">
+    <h6 class="text-primary mb-3"><i class="bi bi-bar-chart me-2"></i>数据图表（并列显示）</h6>
+    <div class="chart-row row">
+        <!-- 图表容器将根据实际数量动态调整大小 -->
+        {% set chart_count = 0 %}
+        {% if has_p1 %}{% set chart_count = chart_count + 1 %}{% endif %}
+        {% if has_p2 %}{% set chart_count = chart_count + 1 %}{% endif %}
+        {% if has_st %}{% set chart_count = chart_count + 1 %}{% endif %}
+        {% if plots.single %}{% set chart_count = chart_count + 1 %}{% endif %}
+        
+        {% set col_class = "col-lg-" + (12 // chart_count)|string + " col-md-6 col-sm-12 mb-4" %}
+        
+        <!-- P1面图 -->
+        {% if has_p1 %}
+        <div class="chart-col {{ col_class }}">
+            {{ render_parallel_chart_section(plots.p1, 'P1', 'P1面不平衡量') }}
+        </div>
+        {% endif %}
+        
+        <!-- P2面图 -->
+        {% if has_p2 %}
+        <div class="chart-col {{ col_class }}">
+            {{ render_parallel_chart_section(plots.p2, 'P2', 'P2面不平衡量') }}
+        </div>
+        {% endif %}
+        
+        <!-- ST面图（仅当上传了ST面时显示） -->
+        {% if has_st %}
+        <div class="chart-col {{ col_class }}">
+            {{ render_parallel_chart_section(plots.sum, 'ST', 'ST面不平衡量') }}
+        </div>
+        {% endif %}
+        
+        <!-- 单面图（仅上传一个面时） -->
+        {% if plots.single %}
+            {% if saved_results.single_surface == 'p1' %}
+                {% set single_surface_title = 'P1面不平衡量' %}
+            {% elif saved_results.single_surface == 'p2' %}
+                {% set single_surface_title = 'P2面不平衡量' %}
+            {% elif saved_results.single_surface == 'st' %}
+                {% set single_surface_title = 'ST面不平衡量' %}
+            {% else %}
+                {% set single_surface_title = '单面不平衡量' %}
+            {% endif %}
+        <div class="chart-col {{ col_class }}">
+            {{ render_parallel_chart_section(plots.single, '单', single_surface_title) }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 组合显示图表区域 -->
+<div class="chart-combined d-none">
+    <h6 class="text-primary mb-3"><i class="bi bi-bar-chart me-2"></i>数据图表（组合显示）</h6>
+    <div class="combined-chart-controls mb-4">
+        <h6 class="text-primary mb-3"><i class="bi bi-diagram-3 me-2"></i>组合图表设置</h6>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">选择图表类型：</label>
+                    <div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input combined-chart-type" type="checkbox" id="combinedTrendChart" value="trend" checked>
+                            <label class="form-check-label" for="combinedTrendChart">趋势图</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input combined-chart-type" type="checkbox" id="combinedScatterChart" value="scatter">
+                            <label class="form-check-label" for="combinedScatterChart">散点图</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input combined-chart-type" type="checkbox" id="combinedBoxChart" value="box">
+                            <label class="form-check-label" for="combinedBoxChart">箱线图</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">其他设置：</label>
+                    <div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="combineAllFaces" checked>
+                            <label class="form-check-label" for="combineAllFaces">合并所有面</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-center">
+            <button type="button" class="btn btn-primary" id="applyCombinedChart">
+                <i class="bi bi-check-circle me-1"></i>应用组合图表
+            </button>
+        </div>
+    </div>
+    
+    <!-- 组合图表容器 -->
+    <div class="combined-chart-container">
+        {% if saved_results and saved_results.combined_charts %}
+            {% for chart_type, chart_files in saved_results.combined_charts.items() %}
+            <div class="chart-section mb-4">
+                <h4>{{ {'box': '组合箱线图', 'violin': '组合小提琴图', 'scatter': '组合散点图', 'trend': '组合趋势图', 'heatmap': '组合热力图', 'histogram': '组合直方图', 'radar': '组合雷达图', '3d': '组合3D散点图'}.get(chart_type, chart_type) }}</h4>
+                <div class="chart-img-container text-center">
+                    <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img img-fluid" alt="组合图表" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="{{ {'box': '组合箱线图', 'violin': '组合小提琴图', 'scatter': '组合散点图', 'trend': '组合趋势图', 'heatmap': '组合热力图', 'histogram': '组合直方图', 'radar': '组合雷达图', '3d': '组合3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}" style="max-width: 100%; height: auto; cursor: pointer;">
+                </div>
+                <div class="text-center mt-2">
+                    <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-secondary me-2" target="_blank">
+                        <i class="bi bi-download me-1"></i>下载PNG
+                    </a>
+                    <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-secondary chart-link" target="_blank">
+                        <i class="bi bi-download me-1"></i>下载HTML（可交互）
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>请配置组合图表选项并点击"应用组合图表"按钮生成图表
+            </div>
+        {% endif %}
+    </div>
+</div>

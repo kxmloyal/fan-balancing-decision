@@ -1,0 +1,20 @@
+# 扇叶平衡补土转速评估工具依赖包
+# 更新日期: 2025年12月3日
+# 支持Python版本: 3.8+
+
+Flask==2.2.5                  # Web框架
+Flask-WTF==1.2.1              # WTForms集成，用于CSRF保护
+Werkzeug==2.2.3               # WSGI工具包，与Flask版本匹配
+numpy==1.23.5                 # 数值计算库
+pandas==1.5.3                 # 数据分析库
+matplotlib==3.7.5             # 数据可视化库
+Pillow==9.5.0                 # 图像处理库
+openpyxl==3.0.10              # Excel文件读写支持
+xlrd==2.0.1                   # Excel文件读取支持
+pdfkit==1.0.0                 # PDF生成库
+gunicorn==20.1.0              # WSGI服务器
+
+# 注意：PDF生成功能还需要系统级依赖 wkhtmltopdf
+# Ubuntu/Debian: apt-get install wkhtmltopdf
+# CentOS/RHEL: yum install wkhtmltopdf
+# Windows: 从官网下载安装
