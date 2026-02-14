@@ -1,11 +1,11 @@
 # 项目目录
 chdir = '/www/wwwroot/xiangxiantu'
 
-# 减少进程数以节省内存
-workers = 2
+# 指定进程数
+workers = 4
 
 # 指定每个进程开启的线程数
-threads = 1
+threads = 4
 
 #启动用户
 user = 'www'
@@ -30,13 +30,6 @@ errorlog = '/www/wwwlogs/python/xiangxiantu/gunicorn_error.log'
 # error:错误消息；
 # critical:严重错误消息；
 loglevel = 'info' 
-
-# 增加Worker超时时间（秒）
-timeout = 120
-
-# 限制工作进程的最大内存使用（以MB为单位）
-max_requests = 1000
-max_requests_jitter = 100
 
 # 自定义设置项请写到该处
 # 最好以上面相同的格式 <注释 + 换行 + key = value> 进行书写， 

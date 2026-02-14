@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据库设置 - 扇叶平衡补土转速评估工具</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='libs/bootstrap/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='libs/bootstrap-icons/bootstrap-icons.css') }}">
+    <script src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='js/reset-manager.js') }}"></script>
+    <style>
+        .form-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .form-control {
+            border-radius: 4px;
+        }
+        .btn {
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .alert {
+            margin-top: 15px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .db-type-specific {
+            display: block;
+        }
+        .db-type-specific.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    {% import 'macros/navbar.html' as navbar_macros %}
+    {{ navbar_macros.render_navbar(active_page='settings') }}
+
+    <div class="container mt-4">
+        <h1 class="text-center mb-4">
+            <i class="bi bi-database"></i> 数据库连接设置
+        </h1>
+
+        <!-- 消息提示 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="form-container">
+            <form id="db-config-form" method="POST" action="{{ url_for('settings.save_db_config') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                    <label for="db_type">数据库类型 *</label>
+                    <select class="form-control" id="db_type" name="db_type" required>
+                        {% for db in db_types %}
+                            <option value="{{ db.value }}" {% if current_config.db_type == db.value %}selected{% endif %}>{{ db.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="db-type-specific" id="mysql-specific">
+                    <div class="form-group">
+                        <label for="host">主机地址 *</label>
+                        <input type="text" class="form-control" id="host" name="host" value="{{ current_config.host }}" placeholder="例如: localhost 或 127.0.0.1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="port">端口号 *</label>
+                        <input type="number" class="form-control" id="port" name="port" value="{{ current_config.port }}" placeholder="例如: 3306">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="database">数据库名称 *</label>
+                        <input type="text" class="form-control" id="database" name="database" value="{{ current_config.database }}" placeholder="例如: boxplot_tool">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="username">用户名 *</label>
+                        <input type="text" class="form-control" id="username" name="username" value="{{ current_config.username }}" placeholder="例如: root">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">密码</label>
+                        <input type="password" class="form-control" id="password" name="password" value="{{ current_config.password }}" placeholder="输入数据库密码">
+                    </div>
+                </div>
+
+                <div class="db-type-specific" id="postgresql-specific">
+                    <div class="form-group">
+                        <label for="host">主机地址 *</label>
+                        <input type="text" class="form-control" id="host" name="host" value="{{ current_config.host }}" placeholder="例如: localhost 或 127.0.0.1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="port">端口号 *</label>
+                        <input type="number" class="form-control" id="port" name="port" value="{{ current_config.port }}" placeholder="例如: 5432">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="database">数据库名称 *</label>
+                        <input type="text" class="form-control" id="database" name="database" value="{{ current_config.database }}" placeholder="例如: boxplot_tool">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="username">用户名 *</label>
+                        <input type="text" class="form-control" id="username" name="username" value="{{ current_config.username }}" placeholder="例如: postgres">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">密码</label>
+                        <input type="password" class="form-control" id="password" name="password" value="{{ current_config.password }}" placeholder="输入数据库密码">
+                    </div>
+                </div>
+
+                <div class="db-type-specific" id="sqlite-specific">
+                    <div class="alert alert-info">
+                        SQLite 数据库将存储在应用程序目录中的 data.db 文件中。
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="save_method">保存方式</label>
+                    <select class="form-control" id="save_method" name="save_method">
+                        <option value="file">保存到配置文件</option>
+                        <option value="env">保存到环境变量</option>
+                    </select>
+                </div>
+
+                <div class="form-group text-center">
+                    <button type="button" class="btn btn-primary" id="test-connection-btn">
+                        <i class="bi bi-activity"></i> 测试连接
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-save"></i> 保存配置
+                    </button>
+                    <a href="{{ url_for('settings.reset_db_config') }}" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> 重置配置
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="mt-4">
+            <h3 class="text-center">当前配置</h3>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>配置项</th>
+                            <th>当前值</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>数据库类型</td>
+                            <td>{{ current_config.db_type | capitalize }}</td>
+                        </tr>
+                        <tr>
+                            <td>主机地址</td>
+                            <td>{{ current_config.host or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <td>端口号</td>
+                            <td>{{ current_config.port or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <td>数据库名称</td>
+                            <td>{{ current_config.database or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <td>用户名</td>
+                            <td>{{ current_config.username or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <td>密码</td>
+                            <td>{% if current_config.password %}******{% else %}N/A{% endif %}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // 根据数据库类型显示/隐藏相应的表单字段
+            function updateFormFields() {
+                var dbType = $('#db_type').val();
+                
+                // 隐藏所有特定于数据库类型的字段
+                $('.db-type-specific').addClass('hidden');
+                
+                // 显示当前数据库类型的字段
+                if (dbType === 'mysql' || dbType === 'postgresql') {
+                    $('#' + dbType + '-specific').removeClass('hidden');
+                } else if (dbType === 'sqlite') {
+                    $('#sqlite-specific').removeClass('hidden');
+                }
+            }
+
+            // 初始加载时更新表单字段
+            updateFormFields();
+
+            // 当数据库类型改变时更新表单字段
+            $('#db_type').change(updateFormFields);
+
+            // 测试连接按钮点击事件
+            $('#test-connection-btn').click(function() {
+                var btn = $(this);
+                var originalText = btn.html();
+                
+                // 显示加载动画
+                btn.html('<i class="bi bi-hourglass-split"></i> 测试中... <span class="loading"></span>');
+                btn.attr('disabled', true);
+
+                // 获取表单数据
+                var formData = $('#db-config-form').serialize();
+
+                // 发送测试连接请求
+                $.ajax({
+                    url: '{{ url_for('settings.test_db_connection') }}',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        // 显示测试结果
+                        if (response.success) {
+                            alert('连接测试成功！');
+                        } else {
+                            alert('连接测试失败：' + response.message);
+                        }
+                    },
+                    error: function() {
+                        alert('测试过程中出现错误，请稍后重试。');
+                    },
+                    complete: function() {
+                        // 恢复按钮状态
+                        btn.html(originalText);
+                        btn.attr('disabled', false);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

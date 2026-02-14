@@ -1,33 +1,56 @@
-import importlib
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+检查所有必要的模块是否能正常导入
+"""
+
+import os
 import sys
 
-def check_module(module_name):
-    try:
-        module = importlib.import_module(module_name)
-        print(f"✓ {module_name} 导入成功")
-        return True
-    except Exception as e:
-        print(f"✗ {module_name} 导入失败: {e}")
-        return False
+# 添加当前目录到Python路径
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, current_dir)
 
-# 添加当前目录到sys.path
-sys.path.insert(0, '.')
+print("=== 开始检查模块导入 ===")
 
-# 检查主要模块
-modules_to_check = [
-    'app',
-    'data_processing',
-    'chart_generation',
-    'statistics',
-    'utils.data_validator',
-    'utils.chart_cache'
+# 检查核心模块
+core_modules = [
+    'pandas',
+    'flask',
+    'flask_sqlalchemy',
+    'werkzeug.utils',
+    'apscheduler.schedulers.background',
 ]
 
-print("开始检查模块导入...")
-print("=" * 50)
+for module in core_modules:
+    try:
+        __import__(module)
+        print(f"✓ {module} 导入成功")
+    except Exception as e:
+        print(f"✗ {module} 导入失败: {e}")
 
-for module in modules_to_check:
-    check_module(module)
+# 检查自定义模块
+custom_modules = [
+    'utils.file_manager',
+    'utils.config_manager',
+    'utils.error_handler',
+    'chart_generation',
+    'data_processing',
+    'statistics',
+    'blueprints.main_bp',
+    'blueprints.report_bp',
+    'blueprints.ml_bp',
+    'blueprints.outputs_bp',
+    'blueprints.settings_bp',
+]
 
-print("=" * 50)
-print("检查完成!")
+for module in custom_modules:
+    try:
+        __import__(module)
+        print(f"✓ {module} 导入成功")
+    except Exception as e:
+        print(f"✗ {module} 导入失败: {e}")
+        import traceback
+        traceback.print_exc()
+
+print("=== 模块导入检查完成 ===")

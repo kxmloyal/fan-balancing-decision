@@ -1,0 +1,385 @@
+2026-02-11 08:09:39,079 - WARNING - error_handler - 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - /www/wwwroot/xiangxiantu/utils/error_handler.py:79
+2026-02-11 08:11:04,103 - WARNING - error_handler - 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - /www/wwwroot/xiangxiantu/utils/error_handler.py:79
+2026-02-11 08:11:15,106 - WARNING - error_handler - 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - /www/wwwroot/xiangxiantu/utils/error_handler.py:79
+2026-02-11 08:11:53,017 - WARNING - error_handler - 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - /www/wwwroot/xiangxiantu/utils/error_handler.py:79
+2026-02-11 08:14:41,485 - ERROR - error_handler - expected token 'end of statement block', got 'with'
+Traceback (most recent call last):
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/blueprints/main_bp.py", line 537, in index
+    return render_template(
+           ^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/templating.py", line 149, in render_template
+    template = app.jinja_env.get_or_select_template(template_name_or_list)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1087, in get_or_select_template
+    return self.get_template(template_name_or_list, parent, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/loaders.py", line 138, in load
+    code = environment.compile(source, name, filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/www/wwwroot/xiangxiantu/templates/index.html", line 321, in template
+    {% include '_charts_partial.html' with chart_layout=saved_results.chart_layout|default('stacked') %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of statement block', got 'with'
+ - /www/wwwroot/xiangxiantu/utils/error_handler.py:81
+2026-02-11 08:14:42,461 - WARNING - error_handler - 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - /www/wwwroot/xiangxiantu/utils/error_handler.py:79
+2026-02-11 08:14:44,390 - ERROR - error_handler - expected token 'end of statement block', got 'with'
+Traceback (most recent call last):
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/blueprints/main_bp.py", line 537, in index
+    return render_template(
+           ^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/templating.py", line 149, in render_template
+    template = app.jinja_env.get_or_select_template(template_name_or_list)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1087, in get_or_select_template
+    return self.get_template(template_name_or_list, parent, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/loaders.py", line 138, in load
+    code = environment.compile(source, name, filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/www/wwwroot/xiangxiantu/templates/index.html", line 321, in template
+    {% include '_charts_partial.html' with chart_layout=saved_results.chart_layout|default('stacked') %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of statement block', got 'with'
+ - /www/wwwroot/xiangxiantu/utils/error_handler.py:81
+2026-02-11 08:14:45,041 - WARNING - error_handler - 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - /www/wwwroot/xiangxiantu/utils/error_handler.py:79
+2026-02-11 08:14:45,509 - ERROR - error_handler - expected token 'end of statement block', got 'with'
+Traceback (most recent call last):
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/blueprints/main_bp.py", line 537, in index
+    return render_template(
+           ^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/templating.py", line 149, in render_template
+    template = app.jinja_env.get_or_select_template(template_name_or_list)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1087, in get_or_select_template
+    return self.get_template(template_name_or_list, parent, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/loaders.py", line 138, in load
+    code = environment.compile(source, name, filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/www/wwwroot/xiangxiantu/templates/index.html", line 321, in template
+    {% include '_charts_partial.html' with chart_layout=saved_results.chart_layout|default('stacked') %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of statement block', got 'with'
+ - /www/wwwroot/xiangxiantu/utils/error_handler.py:81
+2026-02-11 08:14:46,160 - WARNING - error_handler - 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - /www/wwwroot/xiangxiantu/utils/error_handler.py:79
+2026-02-11 08:14:46,804 - ERROR - error_handler - expected token 'end of statement block', got 'with'
+Traceback (most recent call last):
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/blueprints/main_bp.py", line 537, in index
+    return render_template(
+           ^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/templating.py", line 149, in render_template
+    template = app.jinja_env.get_or_select_template(template_name_or_list)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1087, in get_or_select_template
+    return self.get_template(template_name_or_list, parent, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/loaders.py", line 138, in load
+    code = environment.compile(source, name, filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/www/wwwroot/xiangxiantu/templates/index.html", line 321, in template
+    {% include '_charts_partial.html' with chart_layout=saved_results.chart_layout|default('stacked') %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of statement block', got 'with'
+ - /www/wwwroot/xiangxiantu/utils/error_handler.py:81
+2026-02-11 08:14:47,456 - WARNING - error_handler - 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - /www/wwwroot/xiangxiantu/utils/error_handler.py:79
+2026-02-11 08:14:47,812 - ERROR - error_handler - expected token 'end of statement block', got 'with'
+Traceback (most recent call last):
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/blueprints/main_bp.py", line 537, in index
+    return render_template(
+           ^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/templating.py", line 149, in render_template
+    template = app.jinja_env.get_or_select_template(template_name_or_list)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1087, in get_or_select_template
+    return self.get_template(template_name_or_list, parent, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/loaders.py", line 138, in load
+    code = environment.compile(source, name, filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/www/wwwroot/xiangxiantu/templates/index.html", line 321, in template
+    {% include '_charts_partial.html' with chart_layout=saved_results.chart_layout|default('stacked') %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of statement block', got 'with'
+ - /www/wwwroot/xiangxiantu/utils/error_handler.py:81
+2026-02-11 08:14:48,466 - WARNING - error_handler - 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - /www/wwwroot/xiangxiantu/utils/error_handler.py:79
+2026-02-11 08:14:48,939 - ERROR - error_handler - expected token 'end of statement block', got 'with'
+Traceback (most recent call last):
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/blueprints/main_bp.py", line 537, in index
+    return render_template(
+           ^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/templating.py", line 149, in render_template
+    template = app.jinja_env.get_or_select_template(template_name_or_list)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1087, in get_or_select_template
+    return self.get_template(template_name_or_list, parent, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/loaders.py", line 138, in load
+    code = environment.compile(source, name, filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/www/wwwroot/xiangxiantu/templates/index.html", line 321, in template
+    {% include '_charts_partial.html' with chart_layout=saved_results.chart_layout|default('stacked') %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of statement block', got 'with'
+ - /www/wwwroot/xiangxiantu/utils/error_handler.py:81
+2026-02-11 08:14:49,589 - WARNING - error_handler - 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - /www/wwwroot/xiangxiantu/utils/error_handler.py:79
+2026-02-11 08:14:49,971 - ERROR - error_handler - expected token 'end of statement block', got 'with'
+Traceback (most recent call last):
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/blueprints/main_bp.py", line 537, in index
+    return render_template(
+           ^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/templating.py", line 149, in render_template
+    template = app.jinja_env.get_or_select_template(template_name_or_list)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1087, in get_or_select_template
+    return self.get_template(template_name_or_list, parent, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/loaders.py", line 138, in load
+    code = environment.compile(source, name, filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/www/wwwroot/xiangxiantu/templates/index.html", line 321, in template
+    {% include '_charts_partial.html' with chart_layout=saved_results.chart_layout|default('stacked') %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of statement block', got 'with'
+ - /www/wwwroot/xiangxiantu/utils/error_handler.py:81
+2026-02-11 08:14:50,620 - WARNING - error_handler - 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - /www/wwwroot/xiangxiantu/utils/error_handler.py:79
+2026-02-11 08:15:06,707 - ERROR - error_handler - expected token 'end of statement block', got 'with'
+Traceback (most recent call last):
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/blueprints/main_bp.py", line 537, in index
+    return render_template(
+        "index.html",
+    ...<7 lines>...
+        evaluation_report=default_evaluation_report,
+    )
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/flask/templating.py", line 149, in render_template
+    template = app.jinja_env.get_or_select_template(template_name_or_list)
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/jinja2/environment.py", line 1087, in get_or_select_template
+    return self.get_template(template_name_or_list, parent, globals)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/jinja2/environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/jinja2/environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/jinja2/loaders.py", line 138, in load
+    code = environment.compile(source, name, filename)
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/jinja2/environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/www/wwwroot/xiangxiantu/templates/index.html", line 321, in template
+    {% include '_charts_partial.html' with chart_layout=saved_results.chart_layout|default('stacked') %}
+    ^^^^^^^^^^^^^
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of statement block', got 'with'
+ - /www/wwwroot/xiangxiantu/utils/error_handler.py:81
+2026-02-11 08:15:29,588 - ERROR - error_handler - expected token 'end of statement block', got 'with'
+Traceback (most recent call last):
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/blueprints/main_bp.py", line 537, in index
+    return render_template(
+           ^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/flask/templating.py", line 149, in render_template
+    template = app.jinja_env.get_or_select_template(template_name_or_list)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1087, in get_or_select_template
+    return self.get_template(template_name_or_list, parent, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/loaders.py", line 138, in load
+    code = environment.compile(source, name, filename)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 771, in compile
+    self.handle_exception(source=source_hint)
+  File "/www/wwwroot/xiangxiantu/venv/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "/www/wwwroot/xiangxiantu/templates/index.html", line 321, in template
+    {% include '_charts_partial.html' with chart_layout=saved_results.chart_layout|default('stacked') %}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+jinja2.exceptions.TemplateSyntaxError: expected token 'end of statement block', got 'with'
+ - /www/wwwroot/xiangxiantu/utils/error_handler.py:81
+2026-02-11 08:15:30,225 - WARNING - error_handler - 404 Not Found: The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again. - /www/wwwroot/xiangxiantu/utils/error_handler.py:79
+2026-02-13 08:41:54,288 - ERROR - error_handler - 400 Bad Request: The CSRF token is missing.
+Traceback (most recent call last):
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/flask_wtf/csrf.py", line 261, in protect
+    validate_csrf(self._get_csrf_token())
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/flask_wtf/csrf.py", line 100, in validate_csrf
+    raise ValidationError("The CSRF token is missing.")
+wtforms.validators.ValidationError: The CSRF token is missing.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/flask/app.py", line 915, in full_dispatch_request
+    rv = self.preprocess_request()
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/flask/app.py", line 1291, in preprocess_request
+    rv = self.ensure_sync(before_func)()
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/flask_wtf/csrf.py", line 229, in csrf_protect
+    self.protect()
+    ~~~~~~~~~~~~^^
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/flask_wtf/csrf.py", line 264, in protect
+    self._error_response(e.args[0])
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/www/server/pyporject_evn/versions/3.13.7/lib/python3.13/site-packages/flask_wtf/csrf.py", line 307, in _error_response
+    raise CSRFError(reason)
+flask_wtf.csrf.CSRFError: 400 Bad Request: The CSRF token is missing.
+ - /www/wwwroot/xiangxiantu/utils/error_handler.py:81
+2026-02-13 08:56:30,873 - ERROR - error_handler - 图表生成失败：cannot convert float NaN to integer - User: anonymous - IP: 192.168.90.174
+Traceback (most recent call last):
+  File "/www/wwwroot/xiangxiantu/chart_generation.py", line 258, in generate_plots
+    plots["sum"] = generate_generic_charts(
+                   ~~~~~~~~~~~~~~~~~~~~~~~^
+        data=sum_data,
+        ^^^^^^^^^^^^^^
+    ...<6 lines>...
+        is_st_surface=True,
+        ^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/www/wwwroot/xiangxiantu/chart_generation.py", line 407, in generate_generic_charts
+    raw_data = generate_chart_data(data, chart_type)
+  File "/www/wwwroot/xiangxiantu/chart_generation.py", line 627, in generate_chart_data
+    bin_idx = min(int((val - min_val) / bin_width), bin_count - 1)
+                  ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: cannot convert float NaN to integer
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/www/wwwroot/xiangxiantu/blueprints/main_bp.py", line 152, in index
+    plots = generate_plots(
+        saved_results["parsed_data"],
+    ...<2 lines>...
+        chart_types,
+    )
+  File "/www/wwwroot/xiangxiantu/chart_generation.py", line 277, in generate_plots
+    raise Exception(f"图表生成失败：{str(e)}")
+Exception: 图表生成失败：cannot convert float NaN to integer
+ - /www/wwwroot/xiangxiantu/utils/error_handler.py:81

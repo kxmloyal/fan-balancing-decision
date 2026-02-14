@@ -195,6 +195,15 @@
     </style>
 </head>
 <body>
+    <!-- 导入导航栏宏 -->
+    {% import "macros/navbar.html" as navbar_macros %}
+    
+    <!-- 导航栏 -->
+    {{ navbar_macros.render_navbar(active_page='match_result') }}
+    
+    <!-- 使用帮助模态框 -->
+    {{ navbar_macros.render_help_modal() }}
+
     <div class="container mt-4 mb-5">
         <h1 class="text-center mb-4 text-primary"><i class="bi bi-shuffle me-2"></i>转速匹配</h1>
         
@@ -214,7 +223,8 @@
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>匹配概览</h5>
                 <!-- 重置按钮 -->
-                <form method="POST" action="{{ url_for('reset') }}" class="d-inline">
+                <form method="POST" action="{{ url_for('main.reset') }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-light btn-sm" onclick="return confirm('确定要清除所有数据和文件吗？')">
                         <i class="bi bi-arrow-clockwise me-1"></i>重置
                     </button>
@@ -242,6 +252,7 @@
         </div>
 
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="card mt-4">
                 <div class="card-header bg-info text-white">
                     <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>转速匹配设置</h5>
@@ -280,7 +291,7 @@
                     </div>
                 </div>
                 <div class="card-footer bg-light text-center">
-                    <a href="{{ url_for('index') }}" class="btn btn-secondary btn-return">
+                    <a href="{{ url_for('main.index') }}" class="btn btn-secondary btn-return">
                         <i class="bi bi-arrow-left me-1"></i>返回
                     </a>
                     <button type="submit" class="btn btn-primary">
@@ -298,7 +309,6 @@
             </div>
             <div class="card-body">
                 <!-- 统计数据 -->
-                {% if stats_html %}
                 <div class="mb-5">
                     <h6 class="text-primary mb-3"><i class="bi bi-table me-2"></i>统计分析结果</h6>
                     <div class="table-responsive p-3 bg-white rounded shadow-sm">
@@ -306,7 +316,7 @@
                     </div>
                     {% if stats_csv %}
                     <div class="mt-3">
-                        <a href="{{ url_for('download_file', filename=stats_csv) }}" class="btn btn-sm btn-success">
+                        <a href="{{ url_for('outputs.download_file', filename=stats_csv) }}" class="btn btn-sm btn-success">
                             <i class="bi bi-download me-1"></i>下载统计报告（CSV）
                         </a>
                     </div>
@@ -325,24 +335,18 @@
                     </ul>
                     <p><strong>最优转速选择方法（综合评估）：</strong></p>
                     <ul>
-                        <li>当各面最小IQR和最小CV出现在相同转速点时，直接选择该转速</li>
-                        <li>当各面最小IQR和最小CV出现在不同转速点时，采用加权评分法进行综合评估：
+                        <li>采用三级评估模型确定最优转速：</li>
+                        <li>1. <strong>指标归一化处理：</strong>对每个面(P1/P2/ST)分别计算IQR和变异系数(CV)，并进行归一化处理：得分 = 1 / (1 + 指标值)</li>
+                        <li>2. <strong>面内综合得分计算：</strong>对每个面的IQR得分和CV得分进行加权综合：面得分 = 0.5 × IQR得分 + 0.5 × CV得分</li>
+                        <li>3. <strong>面间综合总得分计算：</strong>根据不同面的重要性进行加权综合：
                             <ul>
                                 <li>P1面权重：40%</li>
                                 <li>P2面权重：40%</li>
                                 <li>ST面权重：20%</li>
-                                <li>IQR和CV各自权重：50%</li>
+                                <li>总得分 = 0.4 × P1得分 + 0.4 × P2得分 + 0.2 × ST得分</li>
                             </ul>
                         </li>
-                        <li>综合评估计算公式：
-                            <ul>
-                                <li>对每个面(P1/P2/ST)分别计算IQR和变异系数(CV)</li>
-                                <li>对各项指标进行归一化处理：得分 = 1 / (1 + 指标值)</li>
-                                <li>面内综合：面得分 = 0.5 × IQR得分 + 0.5 × CV得分</li>
-                                <li>面间综合：总得分 = 0.4 × P1得分 + 0.4 × P2得分 + 0.2 × ST得分</li>
-                                <li>根据总得分排序，得分最高的转速为最优转速</li>
-                            </ul>
-                        </li>
+                        <li>4. <strong>最优转速选择：</strong>根据总得分排序，得分最高的转速为最优转速</li>
                     </ul>
                 </div>
                 
@@ -396,63 +400,11 @@
                         <input type="radio" class="btn-check" name="chartLayout" id="parallelLayout" autocomplete="off" value="parallel" {% if saved_results and saved_results.get('chart_layout') == 'parallel' %}checked{% endif %}>
                         <label class="btn btn-outline-primary" for="parallelLayout">并列显示</label>
                         
-                        {% if has_matched %}
-                        <input type="radio" class="btn-check" name="chartLayout" id="combinedLayout" autocomplete="off" value="combined" {% if saved_results and saved_results.get('chart_layout') == 'combined' %}checked{% endif %}>
-                        <label class="btn btn-outline-primary" for="combinedLayout">组合显示</label>
-                        {% else %}
-                        <input type="radio" class="btn-check" name="chartLayout" id="combinedLayout" autocomplete="off" value="combined" disabled>
-                        <label class="btn btn-outline-primary disabled" for="combinedLayout">组合显示</label>
-                        {% endif %}
+
                     </div>
                 </div>
                 
-                <!-- 组合图表控制面板 -->
-                {% if has_matched %}
-                <div class="combined-chart-controls" id="combinedChartControls" style="display: none;">
-                    <h6 class="text-primary mb-3"><i class="bi bi-diagram-3 me-2"></i>组合图表设置</h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">选择图表类型：</label>
-                                <div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" id="combineLineChart" value="trend">
-                                        <label class="form-check-label" for="combineLineChart">趋势图</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" id="combineScatterChart" value="scatter">
-                                        <label class="form-check-label" for="combineScatterChart">散点图</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" id="combineBoxChart" value="box">
-                                        <label class="form-check-label" for="combineBoxChart">箱线图</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">其他设置：</label>
-                                <div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" id="combineAllFaces">
-                                        <label class="form-check-label" for="combineAllFaces">合并所有面</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" id="enableLinkage">
-                                        <label class="form-check-label" for="enableLinkage">启用联动</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="text-center">
-                        <button type="button" class="btn btn-primary" id="applyCombinedChart">
-                            <i class="bi bi-check-circle me-1"></i>应用组合图表
-                        </button>
-                    </div>
-                </div>
-                {% endif %}
+
                 
                 <!-- 图表加载指示器 -->
                 <div class="chart-loading" id="chartLoading">
@@ -476,32 +428,16 @@
                             <!-- 显示所有选中的图表类型 -->
                             {% for chart_type, chart_files in plots.p1.items() %}
                             <div class="mb-4">
-                                <h6 class="font-weight-bold">P1面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
-                                <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img" alt="P1面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P1面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}">
-                                <div class="d-flex justify-content-center mt-2 gap-2">
-                                    <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-download me-1"></i>下载PNG
-                                    </a>
-                                    <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-outline-primary chart-link">
-                                        <i class="bi bi-download me-1"></i>下载HTML（可交互）
-                                    </a>
-                                </div>
+                                <h6 class="font-weight-bold">P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}</h6>
+                                <img src="{{ url_for('outputs.download_file', filename=chart_files.png) }}" class="chart-img" alt="P1面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
                             </div>
                             {% endfor %}
                             <!-- 单面数据处理 -->
                             {% if plots and plots.single and not plots.p1 %}
                             {% for chart_type, chart_files in plots.single.items() %}
                             <div class="mb-4">
-                                <h6 class="font-weight-bold">P1面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
-                                <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img" alt="P1面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P1面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}">
-                                <div class="d-flex justify-content-center mt-2 gap-2">
-                                    <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-download me-1"></i>下载PNG
-                                    </a>
-                                    <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-outline-primary chart-link">
-                                        <i class="bi bi-download me-1"></i>下载HTML（可交互）
-                                    </a>
-                                </div>
+                                <h6 class="font-weight-bold">P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}</h6>
+                                <img src="{{ url_for('outputs.download_file', filename=chart_files.png) }}" class="chart-img" alt="P1面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
                             </div>
                             {% endfor %}
                             {% endif %}
@@ -515,32 +451,16 @@
                             <!-- 显示所有选中的图表类型 -->
                             {% for chart_type, chart_files in plots.p2.items() %}
                             <div class="mb-4">
-                                <h6 class="font-weight-bold">P2面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
-                                <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img" alt="P2面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P2面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}">
-                                <div class="d-flex justify-content-center mt-2 gap-2">
-                                    <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-download me-1"></i>下载PNG
-                                    </a>
-                                    <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-outline-primary chart-link">
-                                        <i class="bi bi-download me-1"></i>下载HTML（可交互）
-                                    </a>
-                                </div>
+                                <h6 class="font-weight-bold">P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}</h6>
+                                <img src="{{ url_for('outputs.download_file', filename=chart_files.png) }}" class="chart-img" alt="P2面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
                             </div>
                             {% endfor %}
                             <!-- 单面数据处理 -->
                             {% if plots and plots.single and not plots.p2 %}
                             {% for chart_type, chart_files in plots.single.items() %}
                             <div class="mb-4">
-                                <h6 class="font-weight-bold">P2面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
-                                <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img" alt="P2面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P2面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}">
-                                <div class="d-flex justify-content-center mt-2 gap-2">
-                                    <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-download me-1"></i>下载PNG
-                                    </a>
-                                    <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-outline-primary chart-link">
-                                        <i class="bi bi-download me-1"></i>下载HTML（可交互）
-                                    </a>
-                                </div>
+                                <h6 class="font-weight-bold">P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}</h6>
+                                <img src="{{ url_for('outputs.download_file', filename=chart_files.png) }}" class="chart-img" alt="P2面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
                             </div>
                             {% endfor %}
                             {% endif %}
@@ -554,32 +474,16 @@
                             <!-- 显示所有选中的图表类型 -->
                             {% for chart_type, chart_files in plots.sum.items() %}
                             <div class="mb-4">
-                                <h6 class="font-weight-bold">ST面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
-                                <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img" alt="ST面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="ST面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}">
-                                <div class="d-flex justify-content-center mt-2 gap-2">
-                                    <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-download me-1"></i>下载PNG
-                                    </a>
-                                    <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-outline-primary chart-link">
-                                        <i class="bi bi-download me-1"></i>下载HTML（可交互）
-                                    </a>
-                                </div>
+                                <h6 class="font-weight-bold">ST面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}</h6>
+                                <img src="{{ url_for('outputs.download_file', filename=chart_files.png) }}" class="chart-img" alt="ST面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="ST面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
                             </div>
                             {% endfor %}
                             <!-- 单面数据处理 -->
                             {% if plots and plots.single and not plots.sum %}
                             {% for chart_type, chart_files in plots.single.items() %}
                             <div class="mb-4">
-                                <h6 class="font-weight-bold">ST面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
-                                <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img" alt="ST面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="ST面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}">
-                                <div class="d-flex justify-content-center mt-2 gap-2">
-                                    <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-download me-1"></i>下载PNG
-                                    </a>
-                                    <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-outline-primary chart-link">
-                                        <i class="bi bi-download me-1"></i>下载HTML（可交互）
-                                    </a>
-                                </div>
+                                <h6 class="font-weight-bold">ST面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}</h6>
+                                <img src="{{ url_for('outputs.download_file', filename=chart_files.png) }}" class="chart-img" alt="ST面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="ST面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
                             </div>
                             {% endfor %}
                             {% endif %}
@@ -597,16 +501,8 @@
                             <!-- 显示所有选中的图表类型 -->
                             {% for chart_type, chart_files in plots.p1_unmatched.items() %}
                             <div class="mb-4">
-                                <h6 class="font-weight-bold">P1面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
-                                <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img" alt="未匹配P1面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P1面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}">
-                                <div class="d-flex justify-content-center mt-2 gap-2">
-                                    <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-download me-1"></i>下载PNG
-                                    </a>
-                                    <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-outline-primary chart-link">
-                                        <i class="bi bi-download me-1"></i>下载HTML（可交互）
-                                    </a>
-                                </div>
+                                <h6 class="font-weight-bold">P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}</h6>
+                                <img src="{{ url_for('outputs.download_file', filename=chart_files.png) }}" class="chart-img" alt="未匹配P1面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
                             </div>
                             {% endfor %}
                         </div>
@@ -622,16 +518,8 @@
                             <!-- 显示所有选中的图表类型 -->
                             {% for chart_type, chart_files in plots.p2_unmatched.items() %}
                             <div class="mb-4">
-                                <h6 class="font-weight-bold">P2面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
-                                <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img" alt="未匹配P2面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P2面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}">
-                                <div class="d-flex justify-content-center mt-2 gap-2">
-                                    <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-download me-1"></i>下载PNG
-                                    </a>
-                                    <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-outline-primary chart-link">
-                                        <i class="bi bi-download me-1"></i>下载HTML（可交互）
-                                    </a>
-                                </div>
+                                <h6 class="font-weight-bold">P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}</h6>
+                                <img src="{{ url_for('outputs.download_file', filename=chart_files.png) }}" class="chart-img" alt="未匹配P2面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
                             </div>
                             {% endfor %}
                         </div>
@@ -653,16 +541,8 @@
                                     <!-- 显示所有选中的图表类型 -->
                                     {% for chart_type, chart_files in plots.p1.items() %}
                                     <div class="mb-4">
-                                        <h6 class="font-weight-bold">P1面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
-                                        <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img" alt="P1面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P1面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}">
-                                        <div class="d-flex justify-content-center mt-2 gap-2">
-                                            <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-outline-secondary">
-                                                <i class="bi bi-download me-1"></i>下载PNG
-                                            </a>
-                                            <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-outline-primary chart-link">
-                                                <i class="bi bi-download me-1"></i>下载HTML（可交互）
-                                            </a>
-                                        </div>
+                                        <h6 class="font-weight-bold">P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}</h6>
+                                        <img src="{{ url_for('outputs.download_file', filename=chart_files.png) }}" class="chart-img" alt="P1面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
                                     </div>
                                     {% endfor %}
                                 </div>
@@ -679,16 +559,8 @@
                                     <!-- 显示所有选中的图表类型 -->
                                     {% for chart_type, chart_files in plots.p2.items() %}
                                     <div class="mb-4">
-                                        <h6 class="font-weight-bold">P2面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
-                                        <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img" alt="P2面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P2面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}">
-                                        <div class="d-flex justify-content-center mt-2 gap-2">
-                                            <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-outline-secondary">
-                                                <i class="bi bi-download me-1"></i>下载PNG
-                                            </a>
-                                            <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-outline-primary chart-link">
-                                                <i class="bi bi-download me-1"></i>下载HTML（可交互）
-                                            </a>
-                                        </div>
+                                        <h6 class="font-weight-bold">P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}</h6>
+                                        <img src="{{ url_for('outputs.download_file', filename=chart_files.png) }}" class="chart-img" alt="P2面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
                                     </div>
                                     {% endfor %}
                                 </div>
@@ -705,68 +577,8 @@
                                     <!-- 显示所有选中的图表类型 -->
                                     {% for chart_type, chart_files in plots.sum.items() %}
                                     <div class="mb-4">
-                                        <h6 class="font-weight-bold">ST面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
-                                        <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img" alt="ST面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="ST面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}">
-                                        <div class="d-flex justify-content-center mt-2 gap-2">
-                                            <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-outline-secondary">
-                                                <i class="bi bi-download me-1"></i>下载PNG
-                                            </a>
-                                            <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-outline-primary chart-link">
-                                                <i class="bi bi-download me-1"></i>下载HTML（可交互）
-                                            </a>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-
-                        <!-- 未匹配P1数据图表 -->
-                        {% if has_unmatched_p1 and plots and plots.p1_unmatched %}
-                        <div class="chart-col">
-                            <div class="mb-5">
-                                <h6 class="text-primary mb-3"><i class="bi bi-x-circle me-2"></i>未匹配P1转速数据图表（并列显示）</h6>
-                                <div class="chart-container h-100">
-                                    <!-- 显示所有选中的图表类型 -->
-                                    {% for chart_type, chart_files in plots.p1_unmatched.items() %}
-                                    <div class="mb-4">
-                                        <h6 class="font-weight-bold">P1面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
-                                        <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img" alt="未匹配P1面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P1面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}">
-                                        <div class="d-flex justify-content-center mt-2 gap-2">
-                                            <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-outline-secondary">
-                                                <i class="bi bi-download me-1"></i>下载PNG
-                                            </a>
-                                            <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-outline-primary chart-link">
-                                                <i class="bi bi-download me-1"></i>下载HTML（可交互）
-                                            </a>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        <!-- 未匹配P2数据图表 -->
-                        {% if has_unmatched_p2 and plots and plots.p2_unmatched %}
-                        <div class="chart-col">
-                            <div class="mb-5">
-                                <h6 class="text-primary mb-3"><i class="bi bi-x-circle me-2"></i>未匹配P2转速数据图表（并列显示）</h6>
-                                <div class="chart-container h-100">
-                                    <!-- 显示所有选中的图表类型 -->
-                                    {% for chart_type, chart_files in plots.p2_unmatched.items() %}
-                                    <div class="mb-4">
-                                        <h6 class="font-weight-bold">P2面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}</h6>
-                                        <img src="{{ url_for('download_file', filename=chart_files.png) }}" class="chart-img" alt="未匹配P2面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P2面不平衡量{{ {'box': '箱线图', 'violin': '小提琴图', 'scatter': '散点图', 'trend': '趋势图', 'heatmap': '热力图', 'histogram': '直方图', 'radar': '雷达图', '3d': '3D散点图'}.get(chart_type, chart_type) }}" data-chart-src="{{ url_for('download_file', filename=chart_files.html) }}">
-                                        <div class="d-flex justify-content-center mt-2 gap-2">
-                                            <a href="{{ url_for('download_file', filename=chart_files.png) }}" class="btn btn-sm btn-outline-secondary">
-                                                <i class="bi bi-download me-1"></i>下载PNG
-                                            </a>
-                                            <a href="{{ url_for('download_file', filename=chart_files.html) }}" class="btn btn-sm btn-outline-primary chart-link">
-                                                <i class="bi bi-download me-1"></i>下载HTML（可交互）
-                                            </a>
-                                        </div>
+                                        <h6 class="font-weight-bold">ST面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}</h6>
+                                        <img src="{{ url_for('outputs.download_file', filename=chart_files.png) }}" class="chart-img" alt="ST面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="ST面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
                                     </div>
                                     {% endfor %}
                                 </div>
@@ -774,13 +586,53 @@
                         </div>
                         {% endif %}
                     </div>
+                    {% endif %}
+                    
+                    <!-- 未匹配P1数据图表 -->
+                    {% if has_unmatched_p1 and plots and plots.p1_unmatched %}
+                    <div class="chart-col">
+                        <div class="mb-5">
+                            <h6 class="text-primary mb-3"><i class="bi bi-x-circle me-2"></i>未匹配P1转速数据图表（并列显示）</h6>
+                            <div class="chart-container h-100">
+                                <!-- 显示所有选中的图表类型 -->
+                                {% for chart_type, chart_files in plots.p1_unmatched.items() %}
+                                <div class="mb-4">
+                                    <h6 class="font-weight-bold">P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}</h6>
+                                    <img src="{{ url_for('outputs.download_file', filename=chart_files.png) }}" class="chart-img" alt="未匹配P1面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- 未匹配P2数据图表 -->
+                    {% if has_unmatched_p2 and plots and plots.p2_unmatched %}
+                    <div class="chart-col">
+                        <div class="mb-5">
+                            <h6 class="text-primary mb-3"><i class="bi bi-x-circle me-2"></i>未匹配P2转速数据图表（并列显示）</h6>
+                            <div class="chart-container h-100">
+                                <!-- 显示所有选中的图表类型 -->
+                                {% for chart_type, chart_files in plots.p2_unmatched.items() %}
+                                <div class="mb-4">
+                                    <h6 class="font-weight-bold">P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}</h6>
+                                    <img src="{{ url_for('outputs.download_file', filename=chart_files.png) }}" class="chart-img" alt="未匹配P2面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
                 
                 <!-- 导出报告功能 -->
                 <div class="export-buttons text-center mt-4">
                     <h6 class="text-primary mb-3"><i class="bi bi-file-earmark-arrow-down me-2"></i>导出完整报告</h6>
-                    <a href="{{ url_for('export_report', report_type='html') }}" class="btn btn-success">
+                    <a href="{{ url_for('report.export_report', report_type='html') }}" class="btn btn-success me-2">
                         <i class="bi bi-filetype-html me-1"></i>导出HTML报告
+                    </a>
+                    <a href="{{ url_for('report.export_report', report_type='pdf') }}" class="btn btn-danger">
+                        <i class="bi bi-filetype-pdf me-1"></i>导出PDF报告
                     </a>
                 </div>
             </div>
@@ -789,14 +641,56 @@
         
         <!-- 返回首页 -->
         <div class="text-center mt-4">
-            <a href="{{ url_for('index') }}" class="btn btn-primary">
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary">
                 <i class="bi bi-arrow-left me-1"></i>返回首页
             </a>
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
     <script src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    
+    <!-- 引入Plotly图表库 -->
+    <script src="https://cdn.plot.ly/plotly-3.3.1.min.js"></script>
+    
+    <!-- 引入Plotly图表模块 -->
+    <script src="{{ url_for('static', filename='js/plotly-manager.js') }}"></script>
+    
+    <!-- 引入图表功能 -->
+    <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    
+    <!-- 引入模态框管理类 -->
+    <script src="{{ url_for('static', filename='js/modal-manager.js') }}"></script>
+    
+    <!-- 引入图表显示问题修复脚本 -->
+    <script src="{{ url_for('static', filename='js/chart-fix.js') }}"></script>
+    
+    <!-- 图表模态框 -->
+    <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" id="chartModalDialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="chartModalLabel">图表详情</h5>
+                    <div class="d-flex gap-2">
+                        <!-- 全屏按钮 -->
+                        <button type="button" class="btn btn-outline-primary" id="fullscreenBtn" title="全屏放大">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-chart-container" style="overflow: hidden; display: flex; height: 100%; width: 100%;">
+                        <!-- 直接渲染图表的容器，替代iframe -->
+                        <div id="chartContainer" style="flex: 1; height: 100%; width: 100%; min-height: 600px;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script>
         // 页面加载完成后初始化图表功能
         document.addEventListener('DOMContentLoaded', function() {

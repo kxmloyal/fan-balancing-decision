@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECharts测试页面</title>
+    <!-- 引入Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 引入ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- 引入ECharts GL -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
+    <style>
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-5">ECharts组件封装测试</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h3>箱线图测试</h3>
+                <div id="box-chart" class="chart-container" data-chart-type="box" data-chart-data='[{"name":"3000rpm","data":[10,20,30,40,50]},{"name":"4000rpm","data":[15,25,35,45,55]},{"name":"5000rpm","data":[20,30,40,50,60]}]'></div>
+            </div>
+            <div class="col-md-6">
+                <h3>趋势图测试</h3>
+                <div id="trend-chart" class="chart-container" data-chart-type="trend" data-chart-data='[{"name":"3000rpm","value":30},{"name":"4000rpm","value":35},{"name":"5000rpm","value":40},{"name":"6000rpm","value":45},{"name":"7000rpm","value":50}]'></div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h3>散点图测试</h3>
+                <div id="scatter-chart" class="chart-container" data-chart-type="scatter" data-chart-data='[["3000rpm",10],["3000rpm",15],["3000rpm",20],["4000rpm",25],["4000rpm",30],["4000rpm",35],["5000rpm",40],["5000rpm",45],["5000rpm",50]]'></div>
+            </div>
+            <div class="col-md-6">
+                <h3>热力图测试</h3>
+                <div id="heatmap-chart" class="chart-container" data-chart-type="heatmap" data-chart-data='[["3000rpm",0,10],["3000rpm",1,15],["3000rpm",2,20],["4000rpm",0,25],["4000rpm",1,30],["4000rpm",2,35],["5000rpm",0,40],["5000rpm",1,45],["5000rpm",2,50]]'></div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h3>直方图测试</h3>
+                <div id="histogram-chart" class="chart-container" data-chart-type="histogram" data-chart-data='[10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100]'></div>
+            </div>
+            <div class="col-md-6">
+                <h3>气泡图测试</h3>
+                <div id="bubble-chart" class="chart-container" data-chart-type="bubble" data-chart-data='[{"name":"3000rpm","value":["3000rpm",30,10]},{"name":"4000rpm","value":["4000rpm",35,15]},{"name":"5000rpm","value":["5000rpm",40,20]},{"name":"6000rpm","value":["6000rpm",45,25]},{"name":"7000rpm","value":["7000rpm",50,30]}]'></div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-5">
+            <button id="reload-btn" class="btn btn-primary">重新加载图表</button>
+            <button id="theme-btn" class="btn btn-secondary ms-2">切换主题</button>
+        </div>
+    </div>
+    
+    <!-- 引入自定义ECharts组件 -->
+    <script>
+        // 存储图表实例
+        let charts = {};
+        
+        // 图表组件工厂类
+        class ChartComponentFactory {
+            static create(containerId, chartType, options = {}) {
+                const chartTypes = {
+                    box: BoxChartComponent,
+                    trend: TrendChartComponent,
+                    scatter: ScatterChartComponent,
+                    heatmap: HeatmapChartComponent,
+                    histogram: HistogramChartComponent,
+                    bubble: BubbleChartComponent,
+                    '3d': Scatter3DChartComponent,
+                    parallel: ParallelChartComponent
+                };
+
+                const ChartClass = chartTypes[chartType] || BaseEChartsComponent;
+                return new ChartClass(containerId, options);
+            }
+        }
+        
+        // 基础图表组件类
+        class BaseEChartsComponent {
+            constructor(containerId, options = {}) {
+                this.containerId = containerId;
+                this.options = {
+                    chartType: 'line',
+                    theme: 'default',
+                    renderer: 'canvas',
+                    responsive: true,
+                    animation: true,
+                    lazyLoad: false,
+                    ...options
+                };
+                this.chartInstance = null;
+                this.loading = false;
+                this.resizeObserver = null;
+            }
+
+            async init(data, config = {}) {
+                try {
+                    if (!window.echarts) {
+                        throw new Error('ECharts library is not loaded');
+                    }
+
+                    const container = document.getElementById(this.containerId);
+                    if (!container) {
+                        throw new Error(`Container ${this.containerId} not found`);
+                    }
+
+                    // 初始化图表实例
+                    this.chartInstance = window.echarts.init(container, null, {
+                        renderer: this.options.renderer,
+                        devicePixelRatio: window.devicePixelRatio || 1,
+                        lazyUpdate: this.options.lazyLoad,
+                        useDirtyRect: true
+                    });
+
+                    // 配置图表
+                    const chartOption = this.buildOption(data, config);
+                    this.chartInstance.setOption(chartOption);
+
+                    // 初始化响应式
+                    if (this.options.responsive) {
+                        this.initResponsive();
+                    }
+
+                    return this.chartInstance;
+                } catch (error) {
+                    console.error('Failed to initialize chart:', error);
+                    throw error;
+                }
+            }
+
+            buildOption(data, config) {
+                return {
+                    title: this.buildTitle(config.title),
+                    tooltip: this.buildTooltip(config.tooltip),
+                    legend: this.buildLegend(config.legend),
+                    grid: this.buildGrid(config.grid),
+                    xAxis: this.buildXAxis(config.xAxis),
+                    yAxis: this.buildYAxis(config.yAxis),
+                    series: this.buildSeries(data, config.series),
+                    animation: this.options.animation,
+                    ...config
+                };
+            }
+
+            buildTitle(titleConfig) {
+                return {
+                    text: '',
+                    left: 'center',
+                    ...titleConfig
+                };
+            }
+
+            buildTooltip(tooltipConfig) {
+                return {
+                    trigger: 'axis',
+                    ...tooltipConfig
+                };
+            }
+
+            buildLegend(legendConfig) {
+                return {
+                    data: [],
+                    top: 30,
+                    ...legendConfig
+                };
+            }
+
+            buildGrid(gridConfig) {
+                return {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true,
+                    ...gridConfig
+                };
+            }
+
+            buildXAxis(xAxisConfig) {
+                return {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: [],
+                    ...xAxisConfig
+                };
+            }
+
+            buildYAxis(yAxisConfig) {
+                return {
+                    type: 'value',
+                    ...yAxisConfig
+                };
+            }
+
+            buildSeries(data, seriesConfig) {
+                return [{
+                    name: 'Series',
+                    type: this.options.chartType,
+                    data: [],
+                    ...seriesConfig
+                }];
+            }
+
+            initResponsive() {
+                window.addEventListener('resize', () => this.resize());
+            }
+
+            resize() {
+                if (this.chartInstance) {
+                    this.chartInstance.resize();
+                }
+            }
+
+            destroy() {
+                if (this.chartInstance) {
+                    this.chartInstance.dispose();
+                    this.chartInstance = null;
+                }
+            }
+        }
+        
+        // 箱线图组件
+        class BoxChartComponent extends BaseEChartsComponent {
+            constructor(containerId, options = {}) {
+                super(containerId, {
+                    chartType: 'boxplot',
+                    ...options
+                });
+            }
+
+            buildOption(data, config = {}) {
+                console.log('BoxChart buildOption data:', data);
+                const xAxisData = data.map(item => item.name);
+                const boxData = data.map(item => item.data);
+                console.log('Extracted xAxisData:', xAxisData);
+                console.log('Extracted boxData:', boxData);
+                
+                return {
+                    title: this.buildTitle(config.title),
+                    tooltip: this.buildTooltip(config.tooltip),
+                    legend: this.buildLegend(config.legend),
+                    grid: this.buildGrid(config.grid),
+                    xAxis: {
+                        ...this.buildXAxis(config.xAxis),
+                        type: 'category',
+                        data: xAxisData
+                    },
+                    yAxis: this.buildYAxis(config.yAxis),
+                    series: this.buildSeries(boxData, config.series),
+                    animation: this.options.animation,
+                    ...config
+                };
+            }
+
+            buildSeries(data, seriesConfig) {
+                return [{
+                    name: 'Box Plot',
+                    type: 'boxplot',
+                    data: data || [],
+                    itemStyle: {
+                        color: '#1f77b4',
+                        borderColor: '#1f77b4'
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            color: '#ff7f0e'
+                        }
+                    },
+                    ...seriesConfig
+                }];
+            }
+        }
+        
+        // 趋势图组件
+        class TrendChartComponent extends BaseEChartsComponent {
+            constructor(containerId, options = {}) {
+                super(containerId, {
+                    chartType: 'line',
+                    ...options
+                });
+            }
+
+            buildOption(data, config = {}) {
+                console.log('TrendChart buildOption data:', data);
+                const xAxisData = data.map(item => item.name);
+                const yAxisData = data.map(item => item.value);
+                console.log('Extracted xAxisData:', xAxisData);
+                console.log('Extracted yAxisData:', yAxisData);
+                
+                return {
+                    title: this.buildTitle(config.title),
+                    tooltip: this.buildTooltip(config.tooltip),
+                    legend: this.buildLegend(config.legend),
+                    grid: this.buildGrid(config.grid),
+                    xAxis: {
+                        ...this.buildXAxis(config.xAxis),
+                        type: 'category',
+                        data: xAxisData
+                    },
+                    yAxis: this.buildYAxis(config.yAxis),
+                    series: this.buildSeries(yAxisData, config.series),
+                    animation: this.options.animation,
+                    ...config
+                };
+            }
+
+            buildSeries(data, seriesConfig) {
+                return [{
+                    name: 'Trend',
+                    type: 'line',
+                    data: data || [],
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 8,
+                    lineStyle: {
+                        width: 3,
+                        color: '#1f77b4'
+                    },
+                    itemStyle: {
+                        color: '#1f77b4'
+                    },
+                    ...seriesConfig
+                }];
+            }
+        }
+        
+        // 散点图组件
+        class ScatterChartComponent extends BaseEChartsComponent {
+            constructor(containerId, options = {}) {
+                super(containerId, {
+                    chartType: 'scatter',
+                    ...options
+                });
+            }
+
+            buildSeries(data, seriesConfig) {
+                return [{
+                    name: 'Scatter',
+                    type: 'scatter',
+                    data: data || [],
+                    symbolSize: 8,
+                    itemStyle: {
+                        color: '#1f77b4',
+                        opacity: 0.7
+                    },
+                    ...seriesConfig
+                }];
+            }
+        }
+        
+        // 热力图组件
+        class HeatmapChartComponent extends BaseEChartsComponent {
+            constructor(containerId, options = {}) {
+                super(containerId, {
+                    chartType: 'heatmap',
+                    ...options
+                });
+            }
+
+            buildSeries(data, seriesConfig) {
+                return [{
+                    name: 'Heatmap',
+                    type: 'heatmap',
+                    data: data || [],
+                    label: {
+                        show: true
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    },
+                    ...seriesConfig
+                }];
+            }
+        }
+        
+        // 直方图组件
+        class HistogramChartComponent extends BaseEChartsComponent {
+            constructor(containerId, options = {}) {
+                super(containerId, {
+                    chartType: 'bar',
+                    ...options
+                });
+            }
+
+            buildSeries(data, seriesConfig) {
+                return [{
+                    name: 'Histogram',
+                    type: 'bar',
+                    data: data || [],
+                    itemStyle: {
+                        color: '#1f77b4'
+                    },
+                    ...seriesConfig
+                }];
+            }
+        }
+        
+        // 气泡图组件
+        class BubbleChartComponent extends BaseEChartsComponent {
+            constructor(containerId, options = {}) {
+                super(containerId, {
+                    chartType: 'scatter',
+                    ...options
+                });
+            }
+
+            buildSeries(data, seriesConfig) {
+                return [{
+                    name: 'Bubble',
+                    type: 'scatter',
+                    data: data || [],
+                    symbolSize: function (val) {
+                        return Math.sqrt(val[2]) * 5;
+                    },
+                    itemStyle: {
+                        color: '#1f77b4',
+                        opacity: 0.6
+                    },
+                    ...seriesConfig
+                }];
+            }
+        }
+        
+        // 3D散点图组件
+        class Scatter3DChartComponent extends BaseEChartsComponent {
+            constructor(containerId, options = {}) {
+                super(containerId, {
+                    chartType: 'scatter3D',
+                    ...options
+                });
+            }
+
+            buildSeries(data, seriesConfig) {
+                return [{
+                    name: '3D Scatter',
+                    type: 'scatter3D',
+                    data: data || [],
+                    symbolSize: 5,
+                    itemStyle: {
+                        color: '#1f77b4'
+                    },
+                    ...seriesConfig
+                }];
+            }
+        }
+        
+        // 平行坐标图组件
+        class ParallelChartComponent extends BaseEChartsComponent {
+            constructor(containerId, options = {}) {
+                super(containerId, {
+                    chartType: 'parallel',
+                    ...options
+                });
+            }
+
+            buildOption(data, config = {}) {
+                return {
+                    title: this.buildTitle(config.title),
+                    tooltip: this.buildTooltip(config.tooltip),
+                    parallelAxis: [
+                        { name: 'Speed', type: 'value' },
+                        { name: 'Median', type: 'value' },
+                        { name: 'Mean', type: 'value' }
+                    ],
+                    series: [{
+                        name: 'Parallel',
+                        type: 'parallel',
+                        data: data || [],
+                        lineStyle: {
+                            width: 2,
+                            color: '#1f77b4'
+                        },
+                        ...config.series
+                    }],
+                    animation: this.options.animation,
+                    ...config
+                };
+            }
+        }
+        
+        // 初始化所有图表
+        async function initAllCharts() {
+            console.log('开始初始化所有图表');
+            
+            const chartContainers = document.querySelectorAll('[data-chart-type]');
+            
+            for (const container of chartContainers) {
+                const containerId = container.id;
+                const chartType = container.getAttribute('data-chart-type');
+                const chartData = container.getAttribute('data-chart-data');
+                
+                if (chartData) {
+                    try {
+                        const data = JSON.parse(chartData);
+                        console.log(`图表数据: ${containerId}`, data);
+                        // 创建图表组件
+                        const chart = ChartComponentFactory.create(containerId, chartType, {
+                            theme: 'default',
+                            responsive: true
+                        });
+                        // 初始化图表
+                        await chart.init(data);
+                        // 存储图表实例
+                        charts[containerId] = chart;
+                        console.log(`图表初始化成功: ${containerId}`);
+                    } catch (error) {
+                        console.error(`初始化图表 ${containerId} 时出错:`, error);
+                    }
+                }
+            }
+        }
+        
+        // 重新加载所有图表
+        async function reloadAllCharts() {
+            console.log('开始重新加载所有图表');
+            
+            // 销毁现有图表
+            for (const containerId in charts) {
+                if (charts.hasOwnProperty(containerId)) {
+                    charts[containerId].destroy();
+                }
+            }
+            // 清空图表实例
+            charts = {};
+            // 重新初始化
+            await initAllCharts();
+            console.log('图表重新加载完成');
+        }
+        
+        // 切换主题
+        function switchTheme() {
+            console.log('切换主题');
+            
+            for (const containerId in charts) {
+                if (charts.hasOwnProperty(containerId)) {
+                    const chart = charts[containerId];
+                    // 切换主题
+                    const currentTheme = chart.options.theme;
+                    const newTheme = currentTheme === 'default' ? 'dark' : 'default';
+                    // 重新初始化图表
+                    const container = document.getElementById(containerId);
+                    const chartType = container.getAttribute('data-chart-type');
+                    const chartData = container.getAttribute('data-chart-data');
+                    
+                    if (chartData) {
+                        try {
+                            const data = JSON.parse(chartData);
+                            // 销毁现有图表
+                            chart.destroy();
+                            // 创建新图表
+                            const newChart = ChartComponentFactory.create(containerId, chartType, {
+                                theme: newTheme,
+                                responsive: true
+                            });
+                            // 初始化图表
+                            newChart.init(data);
+                            // 更新图表实例
+                            charts[containerId] = newChart;
+                        } catch (error) {
+                            console.error(`切换主题时出错:`, error);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 页面加载完成后初始化图表
+        document.addEventListener('DOMContentLoaded', async function() {
+            await initAllCharts();
+        });
+        
+        // 绑定按钮事件
+        document.getElementById('reload-btn').addEventListener('click', reloadAllCharts);
+        document.getElementById('theme-btn').addEventListener('click', switchTheme);
+        
+        // 响应式调整
+        window.addEventListener('resize', function() {
+            for (const containerId in charts) {
+                if (charts.hasOwnProperty(containerId)) {
+                    charts[containerId].resize();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

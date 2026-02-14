@@ -1,0 +1,21 @@
+<!--index.wxml-->
+<view class="container">
+  <view class="page-section">
+    <text class="page-section-title">扇叶平衡补土转速评估工具</text>
+  </view>
+  
+  <view class="chart-container">
+    <text class="chart-title">箱线图</text>
+    <ec-canvas id="mychart-box" canvas-id="mychart-box" ec="{{ ecBox }}"></ec-canvas>
+  </view>
+  
+  <view class="chart-container">
+    <text class="chart-title">散点图</text>
+    <ec-canvas id="mychart-scatter" canvas-id="mychart-scatter" ec="{{ ecScatter }}"></ec-canvas>
+  </view>
+  
+  <view class="chart-container">
+    <text class="chart-title">趋势图</text>
+    <ec-canvas id="mychart-trend" canvas-id="mychart-trend" ec="{{ ecTrend }}"></ec-canvas>
+  </view>
+</view>

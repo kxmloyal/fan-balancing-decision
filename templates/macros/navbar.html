@@ -1,0 +1,246 @@
+{% macro render_navbar(active_page='index') %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary" style="height: 60px;">
+    <div class="container-fluid">
+        <!-- Logo -->
+        <a class="navbar-brand" href="{{ url_for('main.index') }}" style="font-size: 16px; font-weight: bold;">
+            <i class="bi bi-speedometer2 me-2"></i>
+            扇叶平衡补土转速评估工具
+        </a>
+        
+        <!-- 响应式按钮 -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <!-- 导航链接 -->
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <!-- 左侧导航链接 -->
+            <ul class="navbar-nav me-auto" style="gap: 15px;">
+                <li class="nav-item {% if active_page == 'index' %}active{% endif %}">
+                    <a class="nav-link {% if active_page == 'index' %}font-weight-bold{% endif %}" href="{{ url_for('main.index') }}">
+                        <i class="bi bi-house-door me-1"></i>
+                        首页
+                    </a>
+                </li>
+                <li class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+                    <a class="nav-link {% if active_page == 'dashboard' %}font-weight-bold{% endif %}" href="{{ url_for('main.dashboard') }}">
+                        <i class="bi bi-speedometer2 me-1"></i>
+                        仪表盘
+                    </a>
+                </li>
+                <li class="nav-item {% if active_page == 'report' %}active{% endif %}">
+                    <a class="nav-link {% if active_page == 'report' %}font-weight-bold{% endif %}" href="{{ url_for('report.report') }}">
+                        <i class="bi bi-file-text me-1"></i>
+                        报告
+                    </a>
+                </li>
+                <li class="nav-item {% if active_page == 'ml' %}active{% endif %}">
+                    <a class="nav-link {% if active_page == 'ml' %}font-weight-bold{% endif %}" href="{{ url_for('ml.ml') }}">
+                        <i class="bi bi-brain me-1"></i>
+                        机器学习
+                    </a>
+                </li>
+                <li class="nav-item {% if active_page == 'outputs' %}active{% endif %}">
+                    <a class="nav-link {% if active_page == 'outputs' %}font-weight-bold{% endif %}" href="{{ url_for('outputs.outputs') }}">
+                        <i class="bi bi-file-earmark-text me-1"></i>
+                        输出文件管理
+                    </a>
+                </li>
+                <li class="nav-item dropdown {% if active_page == 'settings' %}active{% endif %}">
+                    <a class="nav-link dropdown-toggle {% if active_page == 'settings' %}font-weight-bold{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-gear me-1"></i>
+                        设置
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end bg-primary text-white">
+                        <li>
+                            <a class="dropdown-item text-white" href="{{ url_for('settings.settings') }}">
+                                <i class="bi bi-sliders me-2"></i>系统设置
+                            </a>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider bg-light">
+                        </li>
+                        <li>
+                            <div class="dropdown-item-text p-3">
+                                <h6 class="text-white mb-2"><i class="bi bi-palette me-2"></i>配色方案选择</h6>
+                                <div class="btn-group w-100" role="group" id="colorSchemeGroup">
+                                    <input type="radio" class="btn-check" name="colorScheme" id="scheme1" autocomplete="off" value="scheme1" checked>
+                                    <label class="btn btn-outline-light text-white" for="scheme1">专业科技蓝</label>
+                                    
+                                    <input type="radio" class="btn-check" name="colorScheme" id="scheme2" autocomplete="off" value="scheme2">
+                                    <label class="btn btn-outline-light text-white" for="scheme2">现代商务灰</label>
+                                    
+                                    <input type="radio" class="btn-check" name="colorScheme" id="scheme3" autocomplete="off" value="scheme3">
+                                    <label class="btn btn-outline-light text-white" for="scheme3">活力创新橙</label>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-light">选择适合的配色方案以获得最佳视觉效果</small>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+            
+            <!-- 右侧操作按钮 -->
+            <div class="d-flex gap-2">
+                <a class="btn btn-light btn-sm" href="{{ url_for('report.export_report', report_type='html') }}" style="font-size: 14px;">
+                    <i class="bi bi-file-arrow-down me-1"></i>
+                    导出报告
+                </a>
+                <button class="btn btn-light btn-sm" type="button" id="helpGuideBtn" data-bs-toggle="modal" data-bs-target="#helpGuideModal" style="font-size: 14px;">
+                    <i class="bi bi-question-circle me-1"></i>
+                    使用帮助
+                </button>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- 导航栏样式 -->
+<style>
+    /* 导航栏基础样式 */
+    .navbar {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* 导航链接样式 */
+    .nav-link {
+        font-size: 14px;
+        padding: 8px 12px;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+    }
+    
+    /* 导航链接悬停状态 */
+    .nav-link:hover {
+        background-color: rgba(255,255,255,0.1);
+    }
+    
+    /* 导航链接激活状态 */
+    .nav-link.active {
+        background-color: rgba(255,255,255,0.2);
+        font-weight: bold;
+    }
+    
+    /* 右侧按钮样式 */
+    .btn-light {
+        transition: all 0.3s ease;
+    }
+    
+    .btn-light:hover {
+        background-color: #e2e6ea;
+        border-color: #dae0e5;
+    }
+    
+    /* 下拉菜单样式 */
+    .dropdown-menu {
+        min-width: 300px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .dropdown-item-text {
+        max-width: 100%;
+    }
+    
+    /* 下拉菜单中的按钮样式 */
+    .dropdown-menu .btn-outline-light {
+        border-color: rgba(255,255,255,0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .dropdown-menu .btn-outline-light:hover {
+        background-color: rgba(255,255,255,0.2);
+        border-color: rgba(255,255,255,0.5);
+    }
+    
+    .dropdown-menu .btn-check:checked + .btn-outline-light {
+        background-color: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.6);
+    }
+    
+    /* 响应式调整 */
+    @media (max-width: 991px) {
+        .navbar {
+            height: auto;
+        }
+        
+        .navbar-nav {
+            gap: 5px !important;
+            padding: 10px 0;
+        }
+        
+        .nav-link {
+            padding: 10px 15px;
+        }
+        
+        .d-flex.gap-2 {
+            margin-top: 10px;
+        }
+        
+        .dropdown-menu {
+            min-width: 100%;
+        }
+    }
+    
+    @media (max-width: 767px) {
+        .navbar-brand {
+            font-size: 14px !important;
+        }
+        
+        .navbar-brand i {
+            font-size: 16px;
+        }
+        
+        .dropdown-menu {
+            min-width: 100%;
+        }
+    }
+</style>
+{% endmacro %}
+
+{% macro render_help_modal() %}
+<!-- 使用帮助模态框 -->
+<div class="modal fade" id="helpGuideModal" tabindex="-1" aria-labelledby="helpGuideModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="helpGuideModalLabel">
+                    <i class="bi bi-book me-2"></i>
+                    使用帮助与操作指南
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- 帮助内容 -->
+                <div class="accordion" id="helpAccordion">
+                    <!-- 快速入门 -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingQuickStart">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseQuickStart" aria-expanded="true" aria-controls="collapseQuickStart">
+                                <i class="bi bi-lightning-charge-fill me-2"></i>
+                                快速入门
+                            </button>
+                        </h2>
+                        <div id="collapseQuickStart" class="accordion-collapse collapse show" aria-labelledby="headingQuickStart" data-bs-parent="#helpAccordion">
+                            <div class="accordion-body">
+                                <ol class="list-group list-group-numbered">
+                                    <li class="list-group-item">在首页输入扇叶型号</li>
+                                    <li class="list-group-item">上传P1/P2/ST面数据文件（至少上传一个）</li>
+                                    <li class="list-group-item">点击"开始分析"按钮</li>
+                                    <li class="list-group-item">查看统计结果和图表</li>
+                                    <li class="list-group-item">根据需要切换不同图表类型</li>
+                                    <li class="list-group-item">导出HTML或PDF报告</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}

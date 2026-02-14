@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Box Plot Fix</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="static/js/plotly-manager.js"></script>
+    <script src="static/js/charts.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .chart-container { margin: 30px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        h2 { color: #333; }
+    </style>
+</head>
+<body>
+    <h1>箱线图修复测试</h1>
+    
+    <!-- Test Box Plot with Real Speed Values -->
+    <div class="chart-container">
+        <h2>测试箱线图 - 无散点，中位线对齐</h2>
+        <div id="test_box_chart" class="plotly-chart" 
+             data-chart-type="box" 
+             data-chart-title="P1面不平衡量箱线图" 
+             data-chart-color="#1f77b4"
+             data-chart-data='[{&quot;name&quot;: &quot;2500rpm&quot;, &quot;data&quot;: [3.0, 4.0, 5.0, 6.0, 7.0]}, {&quot;name&quot;: &quot;3000rpm&quot;, &quot;data&quot;: [8.0, 10.0, 12.0, 14.0, 16.0]}, {&quot;name&quot;: &quot;3500rpm&quot;, &quot;data&quot;: [6.0, 7.0, 8.0, 9.0, 10.0]}, {&quot;name&quot;: &quot;4000rpm&quot;, &quot;data&quot;: [5.0, 6.0, 7.0, 8.0, 9.0]}, {&quot;name&quot;: &quot;4500rpm&quot;, &quot;data&quot;: [9.0, 11.0, 13.0, 15.0, 17.0]}]'></div>
+    </div>
+    
+    <script>
+        // Initialize charts when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM加载完成，初始化图表...');
+            initAllChartFeatures();
+        });
+    </script>
+</body>
+</html>

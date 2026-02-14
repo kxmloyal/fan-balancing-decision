@@ -1,0 +1,8 @@
+{
+  "db_type": "mysql",
+  "host": "192.168.90.163",
+  "port": "3306",
+  "database": "zs",
+  "username": "zs",
+  "password": "gAAAAABpivlnnH3MKWyx1N-XTTdcwmLHAT1wiJ2gz2l00iatEWXcR90m6PNyjzZTr8U1lLmaldiT5mTlU6YlVMrNjCjogQTureT2kvMHZI9Fzo11mscHgKY="
+}

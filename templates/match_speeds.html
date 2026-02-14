@@ -9,6 +9,15 @@
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 </head>
 <body>
+    <!-- 导入导航栏宏 -->
+    {% import "macros/navbar.html" as navbar_macros %}
+    
+    <!-- 导航栏 -->
+    {{ navbar_macros.render_navbar(active_page='match_speeds') }}
+    
+    <!-- 使用帮助模态框 -->
+    {{ navbar_macros.render_help_modal() }}
+
     <div class="container mt-4 mb-5">
         <h1 class="text-center mb-5 text-primary"><i class="bi bi-link me-2"></i>转速匹配</h1>
         
@@ -28,7 +37,8 @@
             <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>匹配说明</h5>
                 <!-- 重置按钮 -->
-                <form method="POST" action="{{ url_for('reset') }}" class="d-inline">
+                <form method="POST" action="{{ url_for('main.reset') }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-light btn-sm" onclick="return confirm('确定要清除所有数据和文件吗？')">
                         <i class="bi bi-arrow-clockwise me-1"></i>重置
                     </button>
@@ -40,7 +50,8 @@
             </div>
         </div>
         
-        <form method="POST" action="{{ url_for('match_speeds') }}">
+        <form method="POST" action="{{ url_for('main.match_speeds') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="card">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0"><i class="bi bi-table me-2"></i>转速匹配设置</h5>
@@ -79,7 +90,7 @@
                     </div>
                 </div>
                 <div class="card-footer bg-light text-center">
-                    <a href="{{ url_for('index') }}" class="btn btn-secondary btn-return">
+                    <a href="{{ url_for('main.index') }}" class="btn btn-secondary btn-return">
                         <i class="bi bi-arrow-left me-1"></i>返回
                     </a>
                     <button type="submit" class="btn btn-primary">
@@ -91,5 +102,3 @@
     </div>
 
     <script src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-</body>
-</html>

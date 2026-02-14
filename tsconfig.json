@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "outDir": "./static/js/compiled",
+    "rootDir": "./static/js/modules",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "sourceMap": true,
+    "removeComments": false,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false
+  },
+  "include": [
+    "static/js/modules/**/*",
+    "static/js/types/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "static/js/compiled",
+    "static/js/echarts-manager.js",
+    "static/js/charts.js",
+    "static/js/modal-manager.js",
+    "static/js/upload.js"
+  ]
+}

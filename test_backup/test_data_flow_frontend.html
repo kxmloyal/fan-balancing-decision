@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Data Flow</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        .data-display { white-space: pre; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>Test Data Flow Frontend</h1>
+    
+    <!-- Test with actual backend-generated data format -->
+    <div class="test-section">
+        <h2>Test 1: Backend Data Format</h2>
+        <div id="test1-container" 
+             data-chart-type="box" 
+             data-chart-title="Test Box Plot" 
+             data-chart-color="#1f77b4"
+             data-chart-data='[{"name": "3000rpm", "data": [1.0, 1.1, 1.2, 1.3, 1.4]}, {"name": "4000rpm", "data": [2.3, 2.4, 2.5, 2.6, 2.7]}, {"name": "5000rpm", "data": [1.6, 1.7, 1.8, 1.9, 2.0]}]'></div>
+        <div class="data-display" id="test1-output"></div>
+    </div>
+    
+    <!-- Test with HTML-escaped data (simulating backend output) -->
+    <div class="test-section">
+        <h2>Test 2: HTML-escaped Data</h2>
+        <div id="test2-container" 
+             data-chart-type="box" 
+             data-chart-title="Test Box Plot" 
+             data-chart-color="#1f77b4"
+             data-chart-data='[{&quot;name&quot;: &quot;3000rpm&quot;, &quot;data&quot;: [1.0, 1.1, 1.2, 1.3, 1.4]}, {&quot;name&quot;: &quot;4000rpm&quot;, &quot;data&quot;: [2.3, 2.4, 2.5, 2.6, 2.7]}]'></div>
+        <div class="data-display" id="test2-output"></div>
+    </div>
+    
+    <script>
+        // Test 1: Parse unescaped data
+        const test1Container = document.getElementById('test1-container');
+        const test1Data = test1Container.getAttribute('data-chart-data');
+        const test1Parsed = JSON.parse(test1Data);
+        document.getElementById('test1-output').textContent = JSON.stringify(test1Parsed, null, 2);
+        
+        // Test 2: Parse HTML-escaped data
+        const test2Container = document.getElementById('test2-container');
+        const test2Data = test2Container.getAttribute('data-chart-data');
+        const test2Parsed = JSON.parse(test2Data);
+        document.getElementById('test2-output').textContent = JSON.stringify(test2Parsed, null, 2);
+        
+        console.log('Test 1 Parsed Data:', test1Parsed);
+        console.log('Test 2 Parsed Data:', test2Parsed);
+    </script>
+</body>
+</html>

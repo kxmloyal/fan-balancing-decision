@@ -1,0 +1,29 @@
+{
+  "box": {
+    "png": "p1_1118_P1_p2_1118_P2_p2_box.png",
+    "html": "p1_1118_P1_p2_1118_P2_p2_box.html",
+    "chart_data": "[{\"name\": \"2500rpm\", \"data\": [2.6, 6.225, 7.9, 8.775, 12.600000000000001]}, {\"name\": \"3000rpm\", \"data\": [6.5, 9.325000000000001, 9.9, 11.975, 15.949999999999998]}, {\"name\": \"3500rpm\", \"data\": [5.600000000000001, 5.9, 6.0, 6.1, 6.399999999999999]}, {\"name\": \"4000rpm\", \"data\": [6.7, 6.925000000000001, 7.1, 7.2, 7.6]}, {\"name\": \"4500rpm\", \"data\": [1.8, 4.3, 6.95, 8.4, 10.1]}]",
+    "chart_properties": {
+      "surface_name": "P2面",
+      "color": "#ff7f0e",
+      "chart_type": "box",
+      "output_prefix": "p1_1118_P1_p2_1118_P2",
+      "output_folder": "/www/wwwroot/xiangxiantu/outputs",
+      "is_st_surface": false,
+      "sorted_speeds": [
+        "2500rpm",
+        "3000rpm",
+        "3500rpm",
+        "4000rpm",
+        "4500rpm"
+      ],
+      "median_values": [
+        7.9,
+        9.9,
+        6.0,
+        7.1,
+        6.95
+      ]
+    }
+  }
+}
