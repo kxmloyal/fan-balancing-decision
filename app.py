@@ -11,7 +11,7 @@ import base64
 from data_processing import parse_single_surface_file
 from utils.data_validator import validate_and_align_data, generate_data_warning
 from chart_generation import generate_plots, generate_single_surface_plots, create_combined_chart
-import statistics as stats_module
+from statistics import generate_stats, generate_single_surface_stats
 
 # ========== Flask应用配置 ==========
 app = Flask(__name__)
@@ -245,7 +245,7 @@ def index():
                     flash('数据警告：' + '; '.join(data_warnings))
                 plots = generate_plots(parsed_data, output_prefix, app.config['OUTPUT_FOLDER'])
                 try:
-                    stats_html, stats_csv = stats_module.generate_stats(parsed_data, output_prefix, app.config['OUTPUT_FOLDER'])
+                    stats_html, stats_csv = generate_stats(parsed_data, output_prefix, app.config['OUTPUT_FOLDER'])
                 except Exception as e:
                     flash(f'统计报告生成失败：{str(e)}')
                     return redirect(request.url)
@@ -314,7 +314,7 @@ def index():
             
             # 生成统计报告
             try:
-                stats_html, stats_csv = stats_module.generate_single_surface_stats(parsed_data, output_prefix, surface_type, app.config['OUTPUT_FOLDER'])
+                stats_html, stats_csv = generate_single_surface_stats(parsed_data, output_prefix, surface_type, app.config['OUTPUT_FOLDER'])
             except Exception as e:
                 flash(f'统计报告生成失败：{str(e)}')
                 return redirect(request.url)
@@ -487,7 +487,7 @@ def match_speeds():
         # 匹配统计数据（支持IQR高亮）
         if parsed_data:
             try:
-                matched_stats_html, matched_stats_csv = stats_module.generate_stats(parsed_data, f'{output_prefix}_matched', app.config['OUTPUT_FOLDER'])
+                matched_stats_html, matched_stats_csv = generate_stats(parsed_data, f'{output_prefix}_matched', app.config['OUTPUT_FOLDER'])
             except Exception as e:
                 flash(f'统计报告生成失败：{str(e)}')
                 return redirect(request.url)
@@ -497,7 +497,7 @@ def match_speeds():
         # 未匹配P1统计（支持IQR高亮）
         if single_parsed_data['p1']:
             try:
-                p1_single_stats_html, p1_single_stats_csv = stats_module.generate_single_surface_stats(single_parsed_data['p1'], f'{output_prefix}_p1_unmatched', 'p1', app.config['OUTPUT_FOLDER'])
+                p1_single_stats_html, p1_single_stats_csv = generate_single_surface_stats(single_parsed_data['p1'], f'{output_prefix}_p1_unmatched', 'p1', app.config['OUTPUT_FOLDER'])
             except Exception as e:
                 flash(f'统计报告生成失败：{str(e)}')
                 return redirect(request.url)
@@ -507,7 +507,7 @@ def match_speeds():
         # 未匹配P2统计（支持IQR高亮）
         if single_parsed_data['p2']:
             try:
-                p2_single_stats_html, p2_single_stats_csv = stats_module.generate_single_surface_stats(single_parsed_data['p2'], f'{output_prefix}_p2_unmatched', 'p2', app.config['OUTPUT_FOLDER'])
+                p2_single_stats_html, p2_single_stats_csv = generate_single_surface_stats(single_parsed_data['p2'], f'{output_prefix}_p2_unmatched', 'p2', app.config['OUTPUT_FOLDER'])
             except Exception as e:
                 flash(f'统计报告生成失败：{str(e)}')
                 return redirect(request.url)
