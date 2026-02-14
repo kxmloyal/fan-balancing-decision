@@ -31,7 +31,6 @@ pandas==2.3.3
 pathspec==1.0.3
 pillow==12.1.0
 platformdirs==4.5.1
-
 pluggy==1.6.0
 pycparser==3.0
 pydyf==0.12.1
