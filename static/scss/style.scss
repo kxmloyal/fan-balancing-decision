@@ -1,0 +1,1637 @@
+// 变量定义
+:root {
+    /* 现代化配色方案 */
+    --primary-color: #3498db;
+    --primary-dark: #2980b9;
+    --primary-light: #5dade2;
+    --secondary-color: #2ecc71;
+    --secondary-dark: #27ae60;
+    --secondary-light: #58d68d;
+    --accent-color: #f39c12;
+    --accent-dark: #e67e22;
+    --accent-light: #f5b041;
+    --danger-color: #e74c3c;
+    --danger-dark: #c0392b;
+    --danger-light: #ec7063;
+    --text-primary: #2c3e50;
+    --text-secondary: #7f8c8d;
+    --background-light: #f8f9fa;
+    --background-white: #ffffff;
+    --border-color: #dee2e6;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 8px rgba(0,0,0,0.1);
+    --shadow-lg: 0 8px 16px rgba(0,0,0,0.1);
+    --border-radius-sm: 4px;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    --transition: all 0.3s ease;
+}
+
+// 全局样式
+body {
+    font-family: "Segoe UI", "Microsoft YaHei", "SimHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background-color: var(--background-light);
+    padding: 20px 0;
+    color: var(--text-primary);
+}
+
+.container {
+    max-width: 1200px;
+    background-color: var(--background-white);
+    padding: 30px;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    transition: var(--transition);
+
+    &:hover {
+        box-shadow: var(--shadow-lg);
+    }
+}
+
+// 宽屏支持
+@media (min-width: 1400px) {
+    .container {
+        max-width: 1400px;
+        padding: 35px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .container {
+        max-width: 1600px;
+        padding: 40px;
+    }
+}
+
+@media (min-width: 1900px) {
+    .container {
+        max-width: 1800px;
+        padding: 45px;
+    }
+}
+
+// 1920x1080 分辨率优化
+@media (min-width: 1920px) and (min-height: 1080px) {
+    .container {
+        max-width: 1720px;
+        padding: 40px;
+    }
+    
+    .chart-container {
+        padding: 30px;
+    }
+    
+    .upload-area {
+        padding: 40px;
+    }
+}
+
+// 16:9 屏幕优化
+@media (min-aspect-ratio: 16/9) {
+    .container {
+        max-width: 90vw;
+    }
+    .chart-container {
+        padding: 25px;
+    }
+}
+
+@media (min-aspect-ratio: 16/9) and (min-width: 1200px) {
+    .container {
+        max-width: 85vw;
+    }
+    .chart-container {
+        padding: 30px;
+    }
+}
+
+@media (min-aspect-ratio: 16/9) and (min-width: 1600px) {
+    .container {
+        max-width: 80vw;
+    }
+    .chart-container {
+        padding: 35px;
+    }
+}
+
+// 标题样式
+h1 {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-family: "Segoe UI", "Microsoft YaHei", "SimHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: var(--transition);
+
+    &:hover {
+        color: var(--primary-color);
+    }
+}
+
+h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+    font-weight: 600;
+    transition: var(--transition);
+
+    &:hover {
+        color: var(--primary-color);
+    }
+}
+
+// 卡片样式
+.card {
+    margin-bottom: 30px;
+    border: none;
+    box-shadow: var(--shadow-md);
+    border-radius: var(--border-radius-md);
+    transition: var(--transition);
+    overflow: hidden;
+
+    &:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+    }
+}
+
+@media (min-width: 1400px) {
+    .card {
+        margin-bottom: 35px;
+    }
+}
+
+.card-header {
+    font-weight: 600;
+    font-size: 16px;
+    font-family: "Segoe UI", "Microsoft YaHei", "SimHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+@media (min-width: 1200px) {
+    .card-body {
+        padding: 25px;
+    }
+}
+
+// 图表容器样式
+.plot-container img {
+    border-radius: 5px;
+    border: 1px solid #eee;
+}
+
+// 按钮样式
+.btn {
+    transition: var(--transition);
+    border-radius: var(--border-radius-md);
+    font-weight: 500;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+
+    &:hover {
+        background-color: var(--primary-dark);
+        border-color: var(--primary-dark);
+    }
+}
+
+.btn-secondary {
+    background-color: var(--text-secondary);
+    border-color: var(--text-secondary);
+
+    &:hover {
+        background-color: var(--text-primary);
+        border-color: var(--text-primary);
+    }
+}
+
+.btn-success {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+
+    &:hover {
+        background-color: var(--secondary-dark);
+        border-color: var(--secondary-dark);
+    }
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+
+    &:hover {
+        background-color: var(--danger-dark);
+        border-color: var(--danger-dark);
+    }
+}
+
+.btn-warning {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+
+    &:hover {
+        background-color: var(--accent-dark);
+        border-color: var(--accent-dark);
+    }
+}
+
+.btn-custom {
+    margin-right: 10px;
+}
+
+// 表格样式
+.table-sm th, .table-sm td {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    font-family: "Segoe UI", "Microsoft YaHei", "SimHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    transition: var(--transition);
+
+    &:hover {
+        background-color: rgba(52, 152, 219, 0.05);
+    }
+}
+
+@media (min-width: 1400px) {
+    .table-sm th, .table-sm td {
+        padding: 0.6rem;
+        font-size: 0.95rem;
+    }
+}
+
+// 提示框样式
+.alert {
+    margin-bottom: 20px;
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+
+    &:hover {
+        box-shadow: var(--shadow-md);
+    }
+}
+
+// 表单样式
+.form-control {
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+
+    &:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        transform: translateY(-1px);
+    }
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: var(--transition);
+
+    &:hover {
+        color: var(--primary-color);
+    }
+}
+
+.form-text {
+    font-size: 0.85rem;
+    font-family: "Segoe UI", "Microsoft YaHei", "SimHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--text-secondary);
+}
+
+// 拖放排序功能样式
+.sortable-chart-list {
+    min-height: 100px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 2px dashed #dee2e6;
+    transition: all 0.2s ease;
+
+    &.drag-over {
+        border-color: #0d6efd;
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+}
+
+.draggable-item {
+    cursor: move;
+    transition: all 0.2s ease;
+    border-color: #dee2e6;
+
+    &:hover {
+        border-color: #0d6efd;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-1px);
+    }
+
+    &.dragging {
+        opacity: 0.6;
+        transform: rotate(2deg) scale(1.02);
+        z-index: 1000;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+
+        .drag-handle {
+            cursor: grabbing;
+        }
+    }
+}
+
+.drag-handle {
+    cursor: grab;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+
+    &:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+}
+
+.cursor-move {
+    cursor: move !important;
+}
+
+// 响应式调整
+@media (max-width: 768px) {
+    .draggable-item .drag-handle {
+        font-size: 0.8rem;
+    }
+}
+
+@media (min-width: 1200px) {
+    .chart-container {
+        padding: 20px;
+    }
+}
+
+@media (min-width: 1400px) {
+    .chart-container {
+        padding: 25px;
+        margin: 25px 0;
+    }
+}
+
+// 图表图片样式
+.chart-img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+
+    &:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+}
+
+// 上传区域样式
+.upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    background-color: var(--background-white);
+    box-shadow: var(--shadow-sm);
+
+    &:hover {
+        border-color: var(--primary-color);
+        background-color: rgba(52, 152, 219, 0.05);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    &.drag-over {
+        border-color: var(--secondary-color);
+        background-color: rgba(46, 204, 113, 0.1);
+        box-shadow: var(--shadow-md);
+    }
+}
+
+@media (min-width: 1400px) {
+    .upload-area {
+        padding: 35px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .upload-area {
+        padding: 40px;
+    }
+}
+
+// 图表容器样式
+.chart-container {
+    margin: 20px 0;
+    padding: 20px;
+    background-color: var(--background-white);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+
+    &:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+}
+
+@media (min-width: 1200px) {
+    .chart-container {
+        padding: 25px;
+    }
+}
+
+@media (min-width: 1400px) {
+    .chart-container {
+        padding: 30px;
+    }
+}
+
+// 自定义徽章样式
+.badge-custom {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    font-family: "Segoe UI", "Microsoft YaHei", "SimHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+// 错误容器样式
+.error-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+}
+
+// 匹配表格样式
+.match-table th {
+    text-align: center;
+    vertical-align: middle;
+    background-color: #f8f9fa;
+    font-family: "Segoe UI", "Microsoft YaHei", "SimHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.match-table td {
+    vertical-align: middle;
+    font-family: "Segoe UI", "Microsoft YaHei", "SimHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+// 返回按钮样式
+.btn-return {
+    margin-right: 10px;
+}
+
+// 进度条动画
+.progress-bar-animated {
+    animation: progress-bar-stripes 1s linear infinite;
+}
+
+@keyframes progress-bar-stripes {
+    0% {
+        background-position-x: 1rem;
+    }
+}
+
+.upload-progress {
+    opacity: 0;
+}
+
+// 上传卡片折叠动画
+#uploadCardBody.collapse {
+    transition: height 0.3s ease;
+}
+
+#uploadCardBody.collapsing {
+    height: auto;
+    transition: height 0.3s ease;
+}
+
+// 上传状态提示样式
+#uploadStatusFooter {
+    transition: all 0.3s ease;
+
+    &:not(.d-none) {
+        animation: fadeIn 0.3s ease-in;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+// 重新上传按钮样式
+#reopenUploadBtn {
+    transition: all 0.2s ease;
+
+    &:hover {
+        text-decoration: underline;
+        color: #0d6efd;
+    }
+}
+
+// 折叠图标样式
+#uploadCollapseIcon {
+    transition: transform 0.3s ease;
+}
+
+#uploadCardBody.collapse:not(.show) + #uploadStatusFooter {
+    border-top: none;
+}
+
+// 确保折叠状态下的样式
+#uploadCardHeader:hover {
+    cursor: pointer;
+}
+
+// 页面加载动画
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+// 响应式布局调整
+@media (max-width: 767px) {
+    .upload-area {
+        padding: 20px;
+        margin-bottom: 15px;
+    }
+    
+    .form-label {
+        font-size: 1rem;
+    }
+    
+    .form-text {
+        font-size: 0.8rem;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .upload-area {
+        padding: 25px;
+    }
+}
+
+// 表格样式
+.table-statistics th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.table-statistics .header-main {
+    background-color: #e9ecef;
+    color: #212529;
+    font-weight: 700;
+}
+
+.table-statistics .header-sub {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+}
+
+.table-statistics .face-p1 {
+    background-color: #cce5ff;
+    color: #004085;
+    font-weight: 600;
+}
+
+.table-statistics .face-p2 {
+    background-color: #ffeacc;
+    color: #856404;
+    font-weight: 600;
+}
+
+.table-statistics .face-st {
+    background-color: #d4edda;
+    color: #155724;
+    font-weight: 600;
+}
+
+.table-statistics .evaluation-col {
+    background-color: #f0f0f0;
+    color: #333;
+    font-weight: 600;
+}
+
+// 图表相关样式
+.chart-display-control {
+    margin-bottom: 20px;
+}
+
+.chart-type-selector {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+}
+
+.chart-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.chart-col {
+    flex: 1;
+    min-width: 300px;
+}
+
+.chart-stacked .chart-container {
+    margin-bottom: 30px;
+}
+
+.chart-parallel .chart-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.export-buttons {
+    margin-top: 20px;
+}
+
+// 图表类型标签样式
+.chart-type-badge {
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
+// 响应式图表容器
+@media (min-width: 1400px) {
+    .chart-col {
+        min-width: 350px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .chart-col {
+        min-width: 400px;
+    }
+}
+
+@media (min-width: 1900px) {
+    .chart-col {
+        min-width: 450px;
+    }
+}
+
+// 模态框最大化支持
+.modal-fullscreen-custom {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1050;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+
+    .modal-dialog {
+        max-width: 100%;
+        max-height: 100%;
+        margin: 0;
+        height: 100%;
+    }
+
+    .modal-content {
+        height: 100%;
+        border: none;
+        border-radius: 0;
+    }
+
+    .modal-body {
+        flex-grow: 1;
+        overflow-y: auto;
+    }
+
+    .modal-chart-container {
+        height: 100%;
+    }
+
+    .modal-chart-container iframe {
+        height: 85vh;
+    }
+}
+
+.modal-chart-container {
+    text-align: center;
+
+    iframe {
+        width: 100%;
+        height: 70vh;
+        border: none;
+    }
+}
+
+@media (min-width: 1400px) {
+    .modal-chart-container iframe {
+        height: 75vh;
+    }
+}
+
+@media (min-width: 1600px) {
+    .modal-chart-container iframe {
+        height: 80vh;
+    }
+}
+
+@media (min-width: 1900px) {
+    .modal-chart-container iframe {
+        height: 85vh;
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+// 输出文件管理页面样式
+.output-card {
+    margin-bottom: 20px;
+    transition: transform 0.2s ease;
+
+    &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+}
+
+.btn-group-sm .btn {
+    margin-right: 5px;
+}
+
+// 报告页面样式
+.header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding: 30px;
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    color: white;
+
+    h1 {
+        margin-bottom: 15px;
+        font-weight: bold;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+    }
+}
+
+.report-section {
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+
+    &:hover {
+        box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+        transform: translateY(-2px);
+    }
+
+    h2 {
+        color: #3498db;
+        margin-bottom: 25px;
+        border-bottom: 3px solid #3498db;
+        padding-bottom: 12px;
+        font-weight: bold;
+    }
+
+    p {
+        margin-bottom: 15px;
+        line-height: 1.6;
+    }
+}
+
+.btn {
+    margin-right: 10px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    border: none;
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+    border: none;
+}
+
+.alert {
+    margin-top: 20px;
+    border-radius: 8px;
+}
+
+.card {
+    margin-bottom: 20px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+
+    &:hover {
+        box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    }
+}
+
+.card-header {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    font-weight: bold;
+    padding: 15px 20px;
+}
+
+.card-body {
+    background-color: white;
+    padding: 25px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+
+    label {
+        font-weight: 600;
+        margin-bottom: 8px;
+        display: block;
+        color: #34495e;
+    }
+}
+
+.form-control {
+    border-radius: 8px;
+    padding: 10px 15px;
+    border: 2px solid #e0e0e0;
+    transition: all 0.3s ease;
+
+    &:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+    }
+}
+
+.form-check {
+    margin-bottom: 10px;
+
+    label {
+        font-weight: 400;
+        cursor: pointer;
+    }
+}
+
+.format-info {
+    background-color: #e3f2fd;
+    border-left: 4px solid #3498db;
+    padding: 15px;
+    margin-top: 10px;
+    border-radius: 0 8px 8px 0;
+}
+
+.format-icon {
+    font-size: 1.5rem;
+    margin-right: 10px;
+    color: #3498db;
+}
+
+.export-options {
+    background-color: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.option-group {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e0e0e0;
+
+    &:last-child {
+        border-bottom: none;
+    }
+
+    h4 {
+        color: #34495e;
+        margin-bottom: 15px;
+        font-size: 1.1rem;
+        font-weight: bold;
+    }
+}
+
+.preview-card {
+    background-color: #f5f6fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid #e0e0e0;
+
+    h5 {
+        color: #34495e;
+        margin-bottom: 15px;
+        font-weight: bold;
+    }
+}
+
+@media (max-width: 768px) {
+    .report-section {
+        padding: 20px;
+    }
+    .card-body {
+        padding: 20px;
+    }
+    .header {
+        padding: 20px;
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+// 应用动画类
+.animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-slide-in-left {
+    animation: slideInLeft 0.6s ease-out forwards;
+}
+
+.animate-slide-in-right {
+    animation: slideInRight 0.6s ease-out forwards;
+}
+
+.animate-pulse {
+    animation: pulse 2s infinite;
+}
+
+// 滚动触发动画 - 修复页面空白问题
+.scroll-reveal {
+    opacity: 1;
+    transform: translateY(0);
+    transition: all 0.8s ease;
+
+    &.active {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+// 元素进入和退出动画
+.element-enter {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s ease;
+}
+
+.element-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.element-exit {
+    opacity: 1;
+    transform: translateY(0);
+    transition: all 0.5s ease;
+}
+
+.element-exit-active {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+// 按钮点击波纹效果
+.ripple {
+    position: absolute;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.6);
+    transform: scale(0);
+    animation: ripple-animation 0.6s linear;
+    pointer-events: none;
+}
+
+@keyframes ripple-animation {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+// 渐变背景
+.bg-gradient {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+
+    &.bg-secondary {
+        background: linear-gradient(135deg, var(--secondary-color), var(--secondary-dark));
+    }
+
+    &.bg-info {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+    }
+
+    &.bg-success {
+        background: linear-gradient(135deg, var(--secondary-color), var(--secondary-dark));
+    }
+
+    &.bg-danger {
+        background: linear-gradient(135deg, var(--danger-color), var(--danger-dark));
+    }
+
+    &.bg-warning {
+        background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
+    }
+}
+
+// 卡片阴影层次
+.shadow-sm {
+    box-shadow: var(--shadow-sm);
+}
+
+.shadow-md {
+    box-shadow: var(--shadow-md);
+}
+
+.shadow-lg {
+    box-shadow: var(--shadow-lg);
+}
+
+// 卡片悬停效果
+.card-hover {
+    transition: var(--transition);
+
+    &:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lg);
+    }
+}
+
+// 适配移动端
+@media (max-width: 768px) {
+    #uploadCardHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+
+        h5 {
+            margin-bottom: 0;
+        }
+    }
+    
+    /* 容器样式调整 */
+    .container {
+        padding: 15px;
+        margin: 0 auto;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    
+    /* 上传区域样式调整 */
+    .upload-area {
+        padding: 20px 15px;
+        margin-bottom: 15px;
+    }
+    
+    /* 表格响应式处理 */
+    table {
+        font-size: 0.85rem;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* 按钮样式调整 */
+    .btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.9rem;
+    }
+    
+    /* 表单元素调整 */
+    .form-control {
+        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
+    }
+    
+    /* 卡片样式调整 */
+    .card {
+        margin-bottom: 20px;
+    }
+    
+    .card-header {
+        font-size: 1rem;
+        padding: 0.75rem 1rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    /* 图表容器调整 */
+    .chart-container {
+        padding: 15px;
+        margin: 15px 0;
+    }
+    
+    /* 导航栏调整 */
+    .navbar {
+        padding: 0.5rem 1rem;
+    }
+    
+    /* 标题样式调整 */
+    h1 {
+        font-size: 1.8rem;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+    }
+    
+    h5 {
+        font-size: 1.1rem;
+    }
+    
+    /* 拖拽排序功能在移动端的优化 */
+    .sortable-chart-list {
+        padding: 5px;
+    }
+    
+    .draggable-item {
+        margin-bottom: 10px;
+    }
+    
+    /* 模态框调整 */
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100% - 1rem);
+    }
+    
+    .modal-body {
+        padding: 1rem;
+    }
+    
+    /* 页脚调整 */
+    body {
+        padding: 0;
+    }
+    
+    /* 响应式文件上传区域 */
+    .row {
+        margin-left: -10px;
+        margin-right: -10px;
+    }
+    
+    .col-md-4 {
+        padding-left: 10px;
+        padding-right: 10px;
+        margin-bottom: 15px;
+    }
+    
+    /* 响应式图表布局 */
+    .chart-col {
+        min-width: auto;
+        margin-bottom: 15px;
+    }
+    
+    /* 帮助模态框调整 */
+    #helpGuideModal .modal-dialog {
+        max-width: 100%;
+        margin: 0;
+    }
+    
+    #helpGuideModal .modal-content {
+        height: 100vh;
+        border-radius: 0;
+    }
+    
+    /* 折叠面板调整 */
+    .accordion-button {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .accordion-body {
+        padding: 1rem;
+        font-size: 0.9rem;
+    }
+    
+    /* 快速入门列表调整 */
+    .list-group-item {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    /* 图表类型卡片调整 */
+    .accordion-body .card {
+        margin-bottom: 10px;
+    }
+    
+    .accordion-body .card-body {
+        padding: 0.75rem;
+    }
+    
+    /* 表格行调整 */
+    .match-table th,
+    .match-table td {
+        padding: 0.5rem;
+        font-size: 0.85rem;
+    }
+}
+
+.upload-progress.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 模态框图表容器 */
+.modal-chart-container {
+    text-align: center;
+}
+
+/* 响应式改进 */
+@media (min-width: 1400px) {
+    .container {
+        max-width: 1320px;
+    }
+    .chart-col {
+        min-width: 350px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .container {
+        max-width: 1520px;
+    }
+    .chart-col {
+        min-width: 400px;
+    }
+}
+
+@media (min-width: 1900px) {
+    .container {
+        max-width: 1720px;
+    }
+    .chart-col {
+        min-width: 450px;
+    }
+}
+
+/* Bootstrap 5 fullscreen modal support */
+.modal-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+
+    .modal-dialog {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        max-width: none;
+    }
+
+    .modal-content {
+        height: 100%;
+        border: none;
+        border-radius: 0;
+    }
+
+    .modal-body {
+        overflow-y: auto;
+    }
+}
+
+/* Plotly图表响应式样式 */
+.plotly-chart {
+    transition: all 0.3s ease;
+}
+
+/* 大屏幕设备 */
+@media (min-width: 1200px) {
+    .plotly-chart {
+        height: 450px;
+    }
+}
+
+/* 中等屏幕设备 */
+@media (min-width: 768px) and (max-width: 1199px) {
+    .plotly-chart {
+        height: 400px;
+    }
+}
+
+/* 小屏幕设备 */
+@media (max-width: 767px) {
+    .plotly-chart {
+        height: 350px;
+    }
+}
+
+/* 超小屏幕设备 */
+@media (max-width: 480px) {
+    .plotly-chart {
+        height: 300px;
+    }
+}
+
+/* 并列显示的图表响应式调整 */
+@media (max-width: 991px) {
+    .chart-col {
+        margin-bottom: 20px;
+    }
+    
+    .chart-col .plotly-chart {
+        height: 350px;
+    }
+}
+
+/* 确保图表容器在模态框中正确显示 */
+.modal-body .plotly-chart {
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+}
+
+/* 模态框基础样式优化 */
+.modal.fade.show {
+    display: block;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* 模态框布局优化 */
+.modal-dialog {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+    max-width: 90vw;
+    margin: 5vh auto;
+}
+
+.modal-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    max-height: 90vh;
+}
+
+.modal-header {
+    flex-shrink: 0;
+}
+
+.modal-body {
+    padding: 0;
+    margin: 0;
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    height: 100%;
+    min-height: 400px;
+}
+
+/* 图表容器样式 */
+.modal-chart-container {
+    flex: 1;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    display: flex;
+    min-height: 400px;
+}
+
+/* 图表容器 */
+#chartContainer {
+    flex: 1;
+    height: 100%;
+    width: 100%;
+    min-height: 400px;
+}
+
+.modal-footer {
+    flex-shrink: 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .modal-dialog {
+        max-width: 95vw;
+        margin: 2vh auto;
+        min-height: 70vh;
+    }
+    
+    .modal-body {
+        min-height: 300px;
+    }
+    
+    #chartContainer {
+        min-height: 300px;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-dialog {
+        max-width: 98vw;
+        margin: 1vh auto;
+        min-height: 60vh;
+    }
+    
+    .modal-body {
+        min-height: 250px;
+    }
+    
+    #chartContainer {
+        min-height: 250px;
+    }
+}
+
+/* 新手引导样式 */
+.guide-highlight {
+    outline: 3px solid #3498db;
+    border-radius: 6px;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+    z-index: 99999;
+    position: relative;
+    transition: all 0.3s ease;
+    animation: guidePulse 2s infinite;
+}
+
+@keyframes guidePulse {
+    0% {
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(52, 152, 219, 0.1);
+    }
+    100% {
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+    }
+}
+
+.guide-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 99998;
+    transition: all 0.3s ease;
+}
+
+.guide-container {
+    position: fixed;
+    z-index: 99999;
+    max-width: 400px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    transition: all 0.3s ease;
+}
+
+.guide-title {
+    color: #3498db;
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+
+.guide-content {
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.guide-progress {
+    margin-bottom: 20px;
+}
+
+.guide-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 响应式引导样式 */
+@media (max-width: 768px) {
+    .guide-container {
+        max-width: 90vw;
+        padding: 20px;
+    }
+    
+    .guide-title {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .guide-container {
+        max-width: 95vw;
+        padding: 16px;
+    }
+    
+    .guide-title {
+        font-size: 1.1rem;
+    }
+    
+    .guide-navigation {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .guide-navigation .btn {
+        width: 100%;
+    }
+}

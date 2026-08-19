@@ -1,11 +1,28 @@
 // 应用入口文件
 
+// 全局变量
+var plotlyManager;
+
 // 初始化应用
 function initializeApp() {
-  console.log('应用初始化完成');
+  initPlotlyManager();
   loadChartData();
   initRealtimeUpdateControls();
   initAnimations();
+}
+
+// 初始化Plotly管理器
+function initPlotlyManager() {
+  try {
+    plotlyManager = new SimplePlotlyManager();
+    
+    // 初始化图表
+    setTimeout(() => {
+      reinitPlotlyCharts();
+    }, 100);
+  } catch (error) {
+    console.error('Plotly管理器初始化失败:', error);
+  }
 }
 
 // 初始化动画
@@ -101,19 +118,11 @@ function initRealtimeUpdateControls() {
 // 启动实时更新
 function startRealtimeUpdate(containerId) {
   // 启动实时更新
-  if (window.plotlyManager) {
-    window.plotlyManager.startRealtimeUpdate(containerId, 3000);
-    console.log(`已启动图表 ${containerId} 的实时更新`);
-  }
 }
 
 // 停止实时更新
 function stopRealtimeUpdate(containerId) {
   // 停止实时更新
-  if (window.plotlyManager) {
-    window.plotlyManager.stopRealtimeUpdate(containerId);
-    console.log(`已停止图表 ${containerId} 的实时更新`);
-  }
 }
 
 // 加载图表数据
@@ -126,7 +135,6 @@ function loadChartData() {
     if (chartType && chartData) {
       try {
         const parsedData = JSON.parse(chartData);
-        console.log(`加载图表数据: ${chartType}`, parsedData);
       } catch (error) {
         console.error(`解析图表数据失败: ${chartType}`, error);
       }
@@ -134,15 +142,73 @@ function loadChartData() {
   });
 }
 
-// 处理图表点击事件
-function handleChartClick(event) {
-  console.log('图表点击事件:', event);
+// 重新初始化Plotly图表
+function reinitPlotlyCharts() {
+  if (typeof plotlyManager !== 'undefined') {
+    // 重新初始化所有Plotly图表
+    const chartContainers = document.querySelectorAll('.plotly-chart');
+    chartContainers.forEach((container, index) => {
+      try {
+        const chartId = container.getAttribute('id');
+        const chartType = container.getAttribute('data-chart-type');
+        const chartTitle = container.getAttribute('data-chart-title');
+        const chartColor = container.getAttribute('data-chart-color');
+        const chartDataRaw = container.getAttribute('data-chart-data');
+        
+        //   id: chartId,
+        //   type: chartType,
+        //   title: chartTitle,
+        //   color: chartColor,
+        //   data: chartDataRaw
+        // });
+        
+        if (chartId && chartType && chartDataRaw) {
+          // 确保数据格式正确
+          let chartData;
+          try {
+            const chartDataUnescaped = chartDataRaw.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+            chartData = JSON.parse(chartDataUnescaped);
+          } catch (parseError) {
+            console.error('解析图表数据失败:', parseError);
+            console.warn('使用默认数据初始化图表');
+            chartData = null;
+          }
+          
+          plotlyManager.initChart(chartId, chartType, chartData, {
+              title: chartTitle,
+              color: chartColor
+          });
+        } else {
+          console.warn('图表容器缺少必要属性:', {
+            id: chartId,
+            type: chartType,
+            data: chartDataRaw
+          });
+        }
+      } catch (error) {
+        console.error('初始化图表失败:', error);
+        console.error('错误详情:', error.stack);
+        // 显示错误信息
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'alert alert-danger';
+        errorMessage.textContent = '图表初始化失败，请刷新页面重试';
+        container.appendChild(errorMessage);
+      }
+    });
+  } else {
+    console.warn('未找到plotlyManager，图表初始化失败');
+    // 显示错误信息
+    const chartContainers = document.querySelectorAll('.plotly-chart');
+    chartContainers.forEach(container => {
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'alert alert-danger';
+        errorMessage.textContent = '图表初始化失败，请刷新页面重试';
+        container.appendChild(errorMessage);
+    });
+  }
 }
 
-// 处理图表双击事件
-function handleChartDblClick(event) {
-  console.log('图表双击事件:', event);
-}
+
 
 // 页面加载完成后初始化
 if (document.readyState === 'loading') {

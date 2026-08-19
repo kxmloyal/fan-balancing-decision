@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-    "target": "es2016",
+    "target": "es2017",
+    "lib": ["es2017", "dom"],
     "module": "esnext",
     "moduleResolution": "node",
     "outDir": "./static/js/compiled",
@@ -33,6 +34,7 @@
     "static/js/echarts-manager.js",
     "static/js/charts.js",
     "static/js/modal-manager.js",
-    "static/js/upload.js"
+    "static/js/upload.js",
+    "**/*.test.ts"
   ]
 }

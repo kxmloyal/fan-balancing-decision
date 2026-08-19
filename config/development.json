@@ -1,0 +1,16 @@
+{
+  "SECRET_KEY": "boxplot_tool_2025_secure_key",
+  "DEBUG": true,
+  "SQLALCHEMY_DATABASE_URI": "sqlite:///app.db",
+  "SQLALCHEMY_TRACK_MODIFICATIONS": false,
+  "SQLALCHEMY_ECHO": false,
+  "MAX_CONTENT_LENGTH": 104857600,
+  "ALLOWED_EXTENSIONS": ["csv", "xlsx", "xls", "json", "xml", "txt"],
+  "UPLOAD_FOLDER": "uploads",
+  "OUTPUT_FOLDER": "outputs",
+  "LOGS_FOLDER": "logs",
+  "SESSION_TYPE": "filesystem",
+  "PERMANENT_SESSION_LIFETIME": 3600,
+  "SESSION_FILE_DIR": "flask_session_new",
+  "MPLCONFIGDIR": "/tmp/matplotlib_config"
+}

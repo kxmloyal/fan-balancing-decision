@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>技能评估 - 扇叶平衡补土转速评估工具</title>
+    <link href="{{ url_for('static', filename='libs/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='libs/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/skill_evaluation.css') }}" rel="stylesheet">
+</head>
+<body>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% import 'macros/navbar.html' as navbar_macros %}
+    {{ navbar_macros.render_navbar(active_page='skill_evaluation') }}
+
+    <div class="container main-content">
+        <!-- 页面标题 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h2 class="text-primary">
+                    <i class="bi bi-graph-up me-2"></i>技能评估
+                </h2>
+                <p class="text-muted">基于高级数据分析的综合技能评估系统</p>
+            </div>
+        </div>
+
+        <!-- 数据输入区域 -->
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-database me-2"></i>数据输入
+                    </div>
+                    <div class="card-body">
+                        <form id="skillEvaluationForm">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="fanModel" class="form-label">扇叶型号</label>
+                                    <input type="text" class="form-control" id="fanModel" value="1118" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="testData" class="form-label">测试数据（JSON格式）</label>
+                                    <textarea class="form-control" id="testData" rows="8" placeholder="输入测试数据JSON" required>{{ test_data_json }}</textarea>
+                                    <small class="text-muted">支持从首页分析结果获取数据</small>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <button type="button" class="btn btn-primary" id="loadFromSessionBtn">
+                                        <i class="bi bi-download me-2"></i>从当前分析结果加载
+                                    </button>
+                                    <button type="submit" class="btn btn-success" id="evaluateBtn">
+                                        <i class="bi bi-play me-2"></i>开始评估
+                                    </button>
+                                    <button type="reset" class="btn btn-outline-secondary">
+                                        <i class="bi bi-arrow-counterclockwise me-2"></i>重置
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 加载动画 -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+            <p class="mt-3 text-muted">正在进行高级数据分析...</p>
+        </div>
+
+        <!-- 评估结果区域 -->
+        <div class="result-section" id="resultSection">
+            <!-- 技能等级卡片 -->
+            <div class="row mt-4">
+                <div class="col-lg-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-award me-2"></i>技能等级评定
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="skill-level-badge d-inline-block" id="skillLevelBadge">
+                                需要提升
+                            </div>
+                            <div class="mt-3">
+                                <h4 id="skillScore">技能得分: 0.00</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 统计概览 -->
+            <div class="row mt-4">
+                <div class="col-lg-3 col-md-6">
+                    <div class="card">
+                        <div class="card-body stat-card">
+                            <div class="stat-value" id="dataQualityValue">优秀</div>
+                            <div class="stat-label">
+                                <span class="data-quality-indicator quality-excellent"></span>
+                                数据质量
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="card">
+                        <div class="card-body stat-card">
+                            <div class="stat-value" id="processStabilityValue">稳定</div>
+                            <div class="stat-label">工艺稳定性</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="card">
+                        <div class="card-body stat-card">
+                            <div class="stat-value" id="anomalyCount">0</div>
+                            <div class="stat-label">异常数据点</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="card">
+                        <div class="card-body stat-card">
+                            <div class="stat-value" id="optimalSpeedValue">-</div>
+                            <div class="stat-label">最优转速</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 高级统计分析结果 -->
+            <div class="row mt-4">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-bar-chart me-2"></i>基本统计量
+                        </div>
+                        <div class="card-body">
+                            <div id="basicStatsContent">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>指标</th>
+                                            <th>P1面</th>
+                                            <th>P2面</th>
+                                            <th>ST面</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="basicStatsTable">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-graph-up me-2"></i>趋势分析
+                        </div>
+                        <div class="card-body">
+                            <div id="trendAnalysisContent">
+                                <div id="trendAnalysisTable"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 异常检测结果 -->
+            <div class="row mt-4">
+                <div class="col-lg-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-exclamation-triangle me-2"></i>异常检测结果
+                        </div>
+                        <div class="card-body">
+                            <div id="anomalyDetectionContent">
+                                <div id="anomalyDetectionTable"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 改进建议 -->
+            <div class="row mt-4">
+                <div class="col-lg-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-lightbulb me-2"></i>改进建议
+                        </div>
+                        <div class="card-body">
+                            <div id="recommendationsContent">
+                                <div id="recommendationsList"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="row mt-4 mb-4">
+                <div class="col-lg-12 text-center">
+                    <button type="button" class="btn btn-primary" id="exportReportBtn">
+                        <i class="bi bi-file-earmark-text me-2"></i>导出评估报告
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" id="viewDetailedBtn">
+                        <i class="bi bi-info-circle me-2"></i>查看详细数据
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // 获取CSRF Token
+        function getCsrfToken() {
+            return document.querySelector('input[name="csrf_token"]')?.value || '';
+        }
+
+        // 从当前session加载数据
+        document.getElementById('loadFromSessionBtn').addEventListener('click', async function() {
+            try {
+                const response = await fetch('/api/skill-evaluation/get_session_data', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (data.success && data.parsed_data) {
+                    document.getElementById('testData').value = JSON.stringify(data.parsed_data, null, 2);
+                    if (data.fan_model) {
+                        document.getElementById('fanModel').value = data.fan_model;
+                    }
+                    showToast('success', '成功从当前分析结果加载数据');
+                } else {
+                    showToast('warning', '暂无分析数据，请先进行数据分析');
+                }
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                showToast('danger', '加载数据失败');
+            }
+        });
+
+        // 表单提交
+        document.getElementById('skillEvaluationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const evaluateBtn = document.getElementById('evaluateBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const resultSection = document.getElementById('resultSection');
+
+            try {
+                // 显示加载动画
+                evaluateBtn.disabled = true;
+                loadingSpinner.classList.add('active');
+                resultSection.classList.remove('active');
+
+                // 获取表单数据
+                const fanModel = document.getElementById('fanModel').value;
+                const testDataText = document.getElementById('testData').value;
+                const testData = JSON.parse(testDataText);
+
+                // 调用评估API
+                const response = await fetch('/api/skill-evaluation/evaluate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({ data: testData })
+                });
+
+                const result = await response.json();
+
+                if (result.code === 200) {
+                    // 显示评估结果
+                    displayEvaluationResults(result.data);
+
+                    // 隐藏加载动画，显示结果
+                    loadingSpinner.classList.remove('active');
+                    resultSection.classList.add('active');
+
+                    showToast('success', '技能评估完成');
+                } else {
+                    throw new Error(result.message || '评估失败');
+                }
+            } catch (error) {
+                console.error('评估失败:', error);
+                showToast('danger', '评估失败: ' + error.message);
+                loadingSpinner.classList.remove('active');
+                evaluateBtn.disabled = false;
+            }
+        });
+
+        // 显示评估结果
+        function displayEvaluationResults(data) {
+            const evaluateBtn = document.getElementById('evaluateBtn');
+
+            // 显示技能等级
+            const comprehensiveEval = data.comprehensive_evaluation;
+            const skillLevelBadge = document.getElementById('skillLevelBadge');
+            skillLevelBadge.textContent = comprehensiveEval.skill_level || '需要提升';
+            skillLevelBadge.className = 'skill-level-badge d-inline-block';
+
+            if (comprehensiveEval.skill_level === '专家级') {
+                skillLevelBadge.classList.add('skill-expert');
+            } else if (comprehensiveEval.skill_level === '熟练级') {
+                skillLevelBadge.classList.add('skill-proficient');
+            } else if (comprehensiveEval.skill_level === '基础级') {
+                skillLevelBadge.classList.add('skill-basic');
+            } else {
+                skillLevelBadge.classList.add('skill-needs-improvement');
+            }
+
+            // 显示技能得分
+            document.getElementById('skillScore').textContent =
+                '技能得分: ' + (comprehensiveEval.skill_score || 0).toFixed(2);
+
+            // 显示统计概览
+            document.getElementById('dataQualityValue').textContent = comprehensiveEval.data_quality || '未知';
+            updateDataQualityIndicator(comprehensiveEval.data_quality);
+
+            document.getElementById('processStabilityValue').textContent = comprehensiveEval.process_stability || '未知';
+            document.getElementById('anomalyCount').textContent = comprehensiveEval.anomaly_evaluation || '无异常';
+
+            // 显示最优转速
+            const optimalSpeed = data.optimal_speed_evaluation?.best_speeds?.[0] || '-';
+            document.getElementById('optimalSpeedValue').textContent = optimalSpeed;
+
+            // 显示基本统计量
+            displayBasicStats(data.advanced_analysis?.advanced_statistics?.basic_stats);
+
+            // 显示趋势分析
+            displayTrendAnalysis(data.advanced_analysis?.trend_analysis);
+
+            // 显示异常检测
+            displayAnomalyDetection(data.advanced_analysis?.anomaly_detection);
+
+            // 显示建议
+            displayRecommendations(data);
+
+            // 启用评估按钮
+            evaluateBtn.disabled = false;
+        }
+
+        // 更新数据质量指示器
+        function updateDataQualityIndicator(quality) {
+            const indicator = document.querySelector('.data-quality-indicator');
+            indicator.className = 'data-quality-indicator';
+            if (quality === '优秀') {
+                indicator.classList.add('quality-excellent');
+            } else if (quality === '良好') {
+                indicator.classList.add('quality-good');
+            } else if (quality === '一般') {
+                indicator.classList.add('quality-average');
+            } else {
+                indicator.classList.add('quality-poor');
+            }
+        }
+
+        // 显示基本统计量
+        function displayBasicStats(basicStats) {
+            const tableBody = document.getElementById('basicStatsTable');
+            tableBody.innerHTML = '';
+
+            if (!basicStats) {
+                tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">暂无数据</td></tr>';
+                return;
+            }
+
+            const metrics = ['均值', '中位数', '标准差', '变异系数', '最小值', '最大值'];
+            const metricKeys = ['mean', 'median', 'std', 'cv', 'min', 'max'];
+
+            metricKeys.forEach((key, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${metrics[index]}</td>
+                    <td>${basicStats.p1_value?.[key]?.toFixed(4) || '-'}</td>
+                    <td>${basicStats.p2_value?.[key]?.toFixed(4) || '-'}</td>
+                    <td>${basicStats.st_value?.[key]?.toFixed(4) || '-'}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // 显示趋势分析
+        function displayTrendAnalysis(trendAnalysis) {
+            const container = document.getElementById('trendAnalysisTable');
+            container.innerHTML = '';
+
+            if (!trendAnalysis) {
+                container.innerHTML = '<p class="text-center text-muted">暂无数据</p>';
+                return;
+            }
+
+            const surfaces = [
+                { key: 'p1_value', name: 'P1面' },
+                { key: 'p2_value', name: 'P2面' },
+                { key: 'st_value', name: 'ST面' }
+            ];
+
+            surfaces.forEach(surface => {
+                const trend = trendAnalysis[surface.key];
+                if (trend) {
+                    const div = document.createElement('div');
+                    div.className = 'mb-2';
+                    const trendClass = trend.trend === '上升' ? 'trend-up' :
+                                      trend.trend === '下降' ? 'trend-down' : 'trend-stable';
+                    div.innerHTML = `
+                        <strong>${surface.name}:</strong>
+                        <span class="${trendClass}">${trend.trend}</span>
+                        (斜率: ${trend.slope?.toFixed(4) || '-'})
+                    `;
+                    container.appendChild(div);
+                }
+            });
+        }
+
+        // 显示异常检测
+        function displayAnomalyDetection(anomalyDetection) {
+            const container = document.getElementById('anomalyDetectionTable');
+            container.innerHTML = '';
+
+            if (!anomalyDetection) {
+                container.innerHTML = '<p class="text-center text-muted">暂无数据</p>';
+                return;
+            }
+
+            const surfaces = [
+                { key: 'p1_value', name: 'P1面' },
+                { key: 'p2_value', name: 'P2面' },
+                { key: 'st_value', name: 'ST面' }
+            ];
+
+            let hasAnomalies = false;
+
+            surfaces.forEach(surface => {
+                const anomaly = anomalyDetection[surface.key];
+                if (anomaly && anomaly.anomaly_count > 0) {
+                    hasAnomalies = true;
+                    const div = document.createElement('div');
+                    div.className = 'mb-3';
+                    div.innerHTML = `
+                        <h6>${surface.name}</h6>
+                        <p>异常数量: ${anomaly.anomaly_count}</p>
+                        <p>异常值: ${anomaly.anomaly_values?.join(', ') || '无'}</p>
+                    `;
+                    container.appendChild(div);
+                }
+            });
+
+            if (!hasAnomalies) {
+                container.innerHTML = '<p class="text-success"><i class="bi bi-check-circle me-2"></i>未检测到异常数据</p>';
+            }
+        }
+
+        // 显示建议
+        function displayRecommendations(data) {
+            const container = document.getElementById('recommendationsList');
+            container.innerHTML = '';
+
+            const comprehensiveEval = data.comprehensive_evaluation || {};
+            const recommendations = [];
+
+            // 基于综合评估的建议
+            if (comprehensiveEval.data_quality === '一般' || comprehensiveEval.data_quality === '不足') {
+                recommendations.push({
+                    type: 'warning',
+                    text: '建议增加测量样本数量，提高数据质量'
+                });
+            }
+
+            if (comprehensiveEval.process_stability === '不稳定') {
+                recommendations.push({
+                    type: 'danger',
+                    text: '工艺稳定性较差，建议检查设备状态和操作流程'
+                });
+            }
+
+            if (comprehensiveEval.anomaly_evaluation === '较多异常') {
+                recommendations.push({
+                    type: 'danger',
+                    text: '存在较多异常值，建议检查测量过程和数据采集系统'
+                });
+            }
+
+            if (comprehensiveEval.skill_score < 0.7) {
+                recommendations.push({
+                    type: 'warning',
+                    text: '技能得分较低，建议加强操作培训和工艺优化'
+                });
+            }
+
+            // 基于趋势分析的建议
+            const trendAnalysis = data.advanced_analysis?.trend_analysis || {};
+            const surfaces = ['p1_value', 'p2_value', 'st_value'];
+            const surfaceNames = { p1_value: 'P1面', p2_value: 'P2面', st_value: 'ST面' };
+
+            surfaces.forEach(key => {
+                if (trendAnalysis[key]?.trend === '上升') {
+                    recommendations.push({
+                        type: 'warning',
+                        text: `${surfaceNames[key]}呈现上升趋势，建议分析原因并采取措施`
+                    });
+                }
+            });
+
+            if (recommendations.length === 0) {
+                recommendations.push({
+                    type: 'success',
+                    text: '各项指标表现良好，继续保持当前的操作水平'
+                });
+            }
+
+            recommendations.forEach(rec => {
+                const div = document.createElement('div');
+                div.className = `recommendation-item ${rec.type}`;
+                div.innerHTML = `<i class="bi bi-${rec.type === 'success' ? 'check-circle' : rec.type === 'warning' ? 'exclamation-circle' : 'x-circle'} me-2"></i>${escapeHtml(String(rec.text))}`;
+                container.appendChild(div);
+            });
+        }
+
+        // 导出报告按钮
+        document.getElementById('exportReportBtn').addEventListener('click', async function() {
+            try {
+                const fanModel = document.getElementById('fanModel').value;
+                const testDataText = document.getElementById('testData').value;
+                const testData = JSON.parse(testDataText);
+
+                // 获取评估结果
+                const evalResponse = await fetch('/api/skill-evaluation/evaluate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({ data: testData })
+                });
+
+                const evalResult = await evalResponse.json();
+
+                if (evalResult.code === 200) {
+                    // 生成报告
+                    const reportResponse = await fetch('/api/skill-evaluation/report', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCsrfToken()
+                        },
+                        body: JSON.stringify({ evaluation_results: evalResult.data })
+                    });
+
+                    const reportResult = await reportResponse.json();
+
+                    if (reportResult.code === 200) {
+                        // 下载报告
+                        const blob = new Blob([JSON.stringify(reportResult.data, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `skill_evaluation_report_${new Date().toISOString().slice(0,10)}.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+
+                        showToast('success', '报告导出成功');
+                    }
+                }
+            } catch (error) {
+                console.error('导出报告失败:', error);
+                showToast('danger', '导出报告失败');
+            }
+        });
+
+        // 查看详细数据按钮
+        document.getElementById('viewDetailedBtn').addEventListener('click', function() {
+            const testDataText = document.getElementById('testData').value;
+            try {
+                const testData = JSON.parse(testDataText);
+                console.log('详细数据:', testData);
+                showToast('info', '详细数据已输出到控制台');
+            } catch (error) {
+                showToast('danger', '数据格式错误');
+            }
+        });
+
+        // Toast提示
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+
+        function showToast(type, message) {
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            toastContainer.innerHTML = `
+                <div class="toast show align-items-center text-white bg-${type}" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">${escapeHtml(message)}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(toastContainer);
+            setTimeout(() => {
+                toastContainer.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

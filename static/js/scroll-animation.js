@@ -66,7 +66,6 @@ class ScrollAnimationManager {
             this.setupContentListener();
         }
         
-        console.log('ScrollAnimationManager 初始化完成');
     }
     
     /**
@@ -111,7 +110,6 @@ class ScrollAnimationManager {
             this.observer.observe(element);
         });
         
-        console.log(`已观察 ${elements.length} 个元素`);
     }
     
     /**
@@ -268,7 +266,6 @@ class ScrollAnimationManager {
         // 重新观察元素
         this.observeElements();
         
-        console.log('ScrollAnimationManager 重新初始化完成');
     }
     
     /**
@@ -316,7 +313,6 @@ class ScrollAnimationManager {
         clearTimeout(this.resizeTimeout);
         this.elements.clear();
         
-        console.log('ScrollAnimationManager 已销毁');
     }
 }
 

@@ -4,185 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>报告 - 扇叶平衡补土转速评估工具</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='libs/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='libs/bootstrap-icons/bootstrap-icons.css') }}">
-    <script src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 30px;
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            color: white;
-        }
-        .header h1 {
-            margin-bottom: 15px;
-            font-weight: bold;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header p {
-            font-size: 1.2rem;
-            opacity: 0.9;
-        }
-        .report-section {
-            background-color: #f8f9fa;
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            transition: all 0.3s ease;
-        }
-        .report-section:hover {
-            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-            transform: translateY(-2px);
-        }
-        .report-section h2 {
-            color: #3498db;
-            margin-bottom: 25px;
-            border-bottom: 3px solid #3498db;
-            padding-bottom: 12px;
-            font-weight: bold;
-        }
-        .report-section p {
-            margin-bottom: 15px;
-            line-height: 1.6;
-        }
-        .btn {
-            margin-right: 10px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-            border: none;
-        }
-        .btn-secondary {
-            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-            border: none;
-        }
-        .alert {
-            margin-top: 20px;
-            border-radius: 8px;
-        }
-        .card {
-            margin-bottom: 20px;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            transition: all 0.3s ease;
-        }
-        .card:hover {
-            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-        }
-        .card-header {
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-            color: white;
-            font-weight: bold;
-            padding: 15px 20px;
-        }
-        .card-body {
-            background-color: white;
-            padding: 25px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-group label {
-            font-weight: 600;
-            margin-bottom: 8px;
-            display: block;
-            color: #34495e;
-        }
-        .form-control {
-            border-radius: 8px;
-            padding: 10px 15px;
-            border: 2px solid #e0e0e0;
-            transition: all 0.3s ease;
-        }
-        .form-control:focus {
-            border-color: #3498db;
-            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
-        }
-        .form-check {
-            margin-bottom: 10px;
-        }
-        .form-check-label {
-            font-weight: 400;
-            cursor: pointer;
-        }
-        .format-info {
-            background-color: #e3f2fd;
-            border-left: 4px solid #3498db;
-            padding: 15px;
-            margin-top: 10px;
-            border-radius: 0 8px 8px 0;
-        }
-        .format-icon {
-            font-size: 1.5rem;
-            margin-right: 10px;
-            color: #3498db;
-        }
-        .export-options {
-            background-color: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-        .option-group {
-            margin-bottom: 25px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .option-group:last-child {
-            border-bottom: none;
-        }
-        .option-group h4 {
-            color: #34495e;
-            margin-bottom: 15px;
-            font-size: 1.1rem;
-            font-weight: bold;
-        }
-        .preview-card {
-            background-color: #f5f6fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-            border: 1px solid #e0e0e0;
-        }
-        .preview-card h5 {
-            color: #34495e;
-            margin-bottom: 15px;
-            font-weight: bold;
-        }
-        @media (max-width: 768px) {
-            .container {
-                padding: 10px;
-            }
-            .header {
-                padding: 20px;
-            }
-            .report-section {
-                padding: 20px;
-            }
-            .card-body {
-                padding: 20px;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script defer src="{{ url_for('static', filename='libs/jquery/jquery-3.6.0.min.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <!-- 样式已移至style.css -->
 </head>
 <body>
     {% import 'macros/navbar.html' as navbar_macros %}
@@ -209,7 +36,7 @@
         <div class="report-section scroll-reveal">
             <h2>导出报告</h2>
             <div class="export-options animate-fade-in-up">
-                <form action="{{ url_for('report.export_report') }}" method="GET">
+                <form action="{{ url_for('report.export_report') }}" method="GET" id="reportExportForm">
                     <div class="option-group">
                         <h4><i class="bi bi-file-earmark-text format-icon"></i> 报告格式</h4>
                         <div class="row">
@@ -298,8 +125,16 @@
                         <p id="export-preview">选择导出选项后，将显示预览信息</p>
                     </div>
 
+                    <!-- 导出进度条 -->
+                    <div id="reportProgress" class="d-none mt-4">
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <p class="text-center text-muted mt-2 mb-0"><i class="bi bi-hourglass-split me-1"></i>正在生成报告，请稍候...</p>
+                    </div>
+
                     <div class="d-flex justify-content-center mt-5">
-                        <button type="submit" class="btn btn-primary btn-lg">
+                        <button type="submit" class="btn btn-primary btn-lg export-btn" id="report-submit-btn">
                             <i class="bi bi-download me-2"></i> 导出报告
                         </button>
                         <a href="{{ url_for('main.index') }}" class="btn btn-secondary btn-lg">
@@ -369,70 +204,7 @@
         </div>
     </div>
 
-    <script>
-        $(document).ready(function() {
-            console.log('报告页面加载完成');
-
-            // 格式信息
-            const formatInfo = {
-                'html': '<p><strong>HTML格式：</strong>交互式报告，包含动态图表和详细分析，支持交互操作，适合在浏览器中查看。</p>',
-                'pdf': '<p><strong>PDF格式：</strong>静态报告，保持格式一致性，适合打印和分享，不支持交互操作。</p>',
-                'csv': '<p><strong>CSV格式：</strong>纯数据表格，适合在Excel中进一步分析，不包含图表和格式。</p>',
-                'json': '<p><strong>JSON格式：</strong>结构化数据，适合编程处理和数据交换，机器可读性强。</p>',
-                'xlsx': '<p><strong>Excel格式：</strong>电子表格格式，包含格式化的数据和图表，适合在Excel中编辑。</p>'
-            };
-
-            // 报告类型变化事件
-            $('#report_type').change(function() {
-                const selectedFormat = $(this).val();
-                if (selectedFormat && formatInfo[selectedFormat]) {
-                    $('#format-info').html(formatInfo[selectedFormat]);
-                } else {
-                    $('#format-info').html('<p>请选择报告格式以查看详细信息</p>');
-                }
-                updateExportPreview();
-            });
-
-            // 更新导出预览
-            function updateExportPreview() {
-                const format = $('#report_type').val();
-                const title = $('#report_title').val() || '扇叶平衡补土转速评估报告';
-                const includeCharts = $('#include_charts').is(':checked');
-                const includeStats = $('#include_stats').is(':checked');
-                const includeEvaluation = $('#include_evaluation').is(':checked');
-                const includeRawData = $('#include_raw_data').is(':checked');
-                const includeRecommendations = $('#include_recommendations').is(':checked');
-                const exportFormat = $('#export_format').val();
-
-                let previewText = `<h6>导出配置预览：</h6>`;
-                previewText += `<p><strong>报告格式：</strong>${format ? format.toUpperCase() : '未选择'}</p>`;
-                previewText += `<p><strong>报告标题：</strong>${title}</p>`;
-                previewText += `<p><strong>包含内容：</strong>`;
-                const includedItems = [];
-                if (includeCharts) includedItems.push('图表');
-                if (includeStats) includedItems.push('统计数据');
-                if (includeEvaluation) includedItems.push('评估报告');
-                if (includeRawData) includedItems.push('原始数据');
-                if (includeRecommendations) includedItems.push('建议');
-                previewText += includedItems.length > 0 ? includedItems.join('、') : '无';</p>;
-                previewText += `<p><strong>导出样式：</strong>${exportFormat === 'standard' ? '标准' : exportFormat === 'compact' ? '紧凑' : '详细'}</p>`;
-
-                $('#export-preview').html(previewText);
-            }
-
-            // 监听所有选项变化
-            $('form').on('change', function() {
-                updateExportPreview();
-            });
-
-            // 初始化预览
-            updateExportPreview();
-
-            // 添加动画效果
-            $('.report-section').each(function(index) {
-                $(this).css('animation-delay', (index * 0.1) + 's');
-            });
-        });
-    </script>
+    <script defer src="{{ url_for('static', filename='js/safe-fetch.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/report.js') }}"></script>
 </body>
 </html>

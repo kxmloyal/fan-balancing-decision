@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析报告</title>
+    <link href="{{ url_for('static', filename='libs/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <style>
+        body { margin: 20px; }
+        .section { margin: 30px 0; padding: 20px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
+        .summary { background-color: var(--background-light); }
+        .stats { background-color: rgba(var(--primary-rgb), 0.06); }
+        .anomaly { background-color: rgba(var(--bs-warning-rgb), 0.1); }
+        .recommendations { background-color: rgba(var(--bs-success-rgb), 0.1); }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid var(--border-color); padding: 8px; text-align: left; }
+        th { background-color: var(--background-light); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">数据分析报告</h1>
+        <p class="text-center text-muted">生成时间: {{ generated_at }}</p>
+
+        {% if include.summary %}
+        <div class="section summary">
+            <h2>分析摘要</h2>
+            {% if evaluation_results.comprehensive_evaluation %}
+                <p>综合评分: {{ evaluation_results.comprehensive_evaluation.get('skill_score', 'N/A') }}</p>
+                <p>数据质量: {{ evaluation_results.comprehensive_evaluation.get('data_quality', 'N/A') }}</p>
+                <p>工艺稳定性: {{ evaluation_results.comprehensive_evaluation.get('process_stability', 'N/A') }}</p>
+                <p>整体评估: {{ evaluation_results.comprehensive_evaluation.get('overall_assessment', 'N/A') }}</p>
+            {% endif %}
+            {% if evaluation_results.optimal_speed_evaluation and evaluation_results.optimal_speed_evaluation.best_speeds %}
+            <p>推荐最优转速:
+                {% for speed in evaluation_results.optimal_speed_evaluation.best_speeds[:3] %}
+                {{ speed }}
+                {% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if include.basicStats and evaluation_results.basic_stats %}
+        <div class="section stats">
+            <h2>基本统计信息</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>面</th>
+                        <th>均值</th>
+                        <th>中位数</th>
+                        <th>标准差</th>
+                        <th>最小值</th>
+                        <th>最大值</th>
+                        <th>样本数</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for face, stats in evaluation_results.basic_stats.items() %}
+                    <tr>
+                        <td>{{ {'p1_value': 'P1面', 'p2_value': 'P2面', 'st_value': 'ST面'}.get(face, face) }}</td>
+                        <td>{{ '{:.2f}'.format(stats.get('mean', 0)) }}</td>
+                        <td>{{ '{:.2f}'.format(stats.get('median', 0)) }}</td>
+                        <td>{{ '{:.2f}'.format(stats.get('std', 0)) }}</td>
+                        <td>{{ '{:.2f}'.format(stats.get('min', 0)) }}</td>
+                        <td>{{ '{:.2f}'.format(stats.get('max', 0)) }}</td>
+                        <td>{{ stats.get('count', 'N/A') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        {% if include.basicStats and evaluation_results.optimal_speed_evaluation %}
+        <div class="section stats">
+            <h2>最优转速评估</h2>
+            {% if evaluation_results.optimal_speed_evaluation.best_speeds %}
+            <p><strong>推荐最佳转速:</strong></p>
+            <ul>
+            {% for speed in evaluation_results.optimal_speed_evaluation.best_speeds[:5] %}
+            <li>
+                转速: {{ speed }}
+            </li>
+            {% endfor %}
+            </ul>
+            {% endif %}
+            {% if evaluation_results.optimal_speed_evaluation.speed_detailed_scores %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>转速</th>
+                        <th>中位数得分</th>
+                        <th>标准差得分</th>
+                        <th>变异系数得分</th>
+                        <th>数据量得分</th>
+                        <th>ST奖励</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for speed_label, speed in evaluation_results.optimal_speed_evaluation.speed_detailed_scores.items() if speed is mapping %}
+                    <tr>
+                        <td>{{ speed_label }}</td>
+                        <td>{{ "%.2f"|format((speed.get('median', 0) or 0)|float) }}</td>
+                        <td>{{ "%.2f"|format((speed.get('std', 0) or 0)|float) }}</td>
+                        <td>{{ "%.2f"|format((speed.get('cv', 0) or 0)|float) }}</td>
+                        <td>{{ "%.2f"|format((speed.get('count', 0) or 0)|float) }}</td>
+                        <td>{{ "%.2f"|format((speed.get('st_bonus', 0) or 0)|float) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if include.advancedStats and evaluation_results.advanced_stats %}
+        <div class="section stats">
+                <h2>高级统计分析</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>面</th>
+                            <th>IQR</th>
+                            <th>偏度</th>
+                            <th>峰度</th>
+                            <th>变异系数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for face, stats in evaluation_results.advanced_stats.items() %}
+                        <tr>
+                            <td>{{ {'p1_value': 'P1面', 'p2_value': 'P2面', 'st_value': 'ST面'}.get(face, face) }}</td>
+                            <td>{{ '{:.2f}'.format(stats.get('iqr', 0)) }}</td>
+                            <td>{{ '{:.2f}'.format(stats.get('skewness', 0)) }}</td>
+                            <td>{{ '{:.2f}'.format(stats.get('kurtosis', 0)) }}</td>
+                            <td>{{ '{:.2f}'.format(stats.get('cv', 0)) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+        {% if include.trendAnalysis and evaluation_results.trend_analysis %}
+        <div class="section stats">
+            <h2>趋势分析</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>面</th>
+                        <th>斜率</th>
+                        <th>截距</th>
+                        <th>R²</th>
+                        <th>趋势方向</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for face, trend in evaluation_results.trend_analysis.items() %}
+                    <tr>
+                        <td>{{ {'p1_value': 'P1面', 'p2_value': 'P2面', 'st_value': 'ST面'}.get(face, face) }}</td>
+                        <td>{{ '{:.4f}'.format(trend.get('slope', 0)) }}</td>
+                        <td>{{ '{:.2f}'.format(trend.get('intercept', 0)) }}</td>
+                        <td>{{ '{:.2f}'.format(trend.get('r_squared', 0)) }}</td>
+                        <td>{{ trend.get('trend_direction', 'N/A') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        {% if include.anomalyDetection and evaluation_results.anomaly_detection %}
+        <div class="section anomaly">
+            <h2>异常检测</h2>
+            {% for face, anomaly in evaluation_results.anomaly_detection.items() %}
+                {% if anomaly and anomaly.anomaly_values %}
+                <h3>{{ {'p1_value': 'P1面', 'p2_value': 'P2面', 'st_value': 'ST面'}.get(face, face) }}</h3>
+                <p>异常数量: {{ anomaly.anomaly_values | length }}</p>
+                <p>异常比例: {{ (anomaly.get('anomaly_ratio', 0) * 100) | round(2) }}%</p>
+                <p>检测方法: {{ anomaly.get('detection_method', '统计方法') }}</p>
+                <p>异常值: {{ anomaly.anomaly_values | join(', ') }}</p>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if include.recommendations and evaluation_results.comprehensive_evaluation %}
+            {% if evaluation_results.comprehensive_evaluation.recommendations %}
+            <div class="section recommendations">
+                <h2>改进建议</h2>
+                <ul>
+                    {% for rec in evaluation_results.comprehensive_evaluation.recommendations %}
+                    <li>{{ rec }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</body>
+</html>

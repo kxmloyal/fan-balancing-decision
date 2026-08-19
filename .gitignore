@@ -179,3 +179,18 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+.gitnexus
+
+# 运行时产物与依赖（不入库）
+node_modules/
+flask_session/
+flask_session_new/
+outputs/
+uploads/
+logs/
+.chart_cache/
+*.pid
+*.log
+data.db
+data.db-journal
+.claude/

@@ -7,9 +7,10 @@
     "port": null,
     "database": "./data.db",
     "username": null,
-    "password": null,
-    "status": "inactive",
-    "created_at": "2026-01-27T13:35:45.787209",
-    "updated_at": "2026-01-27T13:35:45.787216"
+    "status": "active",
+    "is_primary": false,
+    "created_at": "2026-05-20T02:17:23.277796",
+    "updated_at": "2026-05-20T02:17:23.277806",
+    "password": ""
   }
 ]

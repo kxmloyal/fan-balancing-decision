@@ -1,0 +1,166 @@
+/* ═══════════════════════════════════════════════════════════
+   深入分析页面样式
+   从 templates/in_depth_analysis.html 内联 <style> 外部化
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 卡片悬停效果 ── */
+.hover-lift {
+    transition: var(--transition);
+}
+.hover-lift:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* ── 表格样式 ── */
+.in-depth-table {
+    font-size: 0.9rem;
+}
+.in-depth-table th {
+    font-weight: 600;
+}
+
+/* ── 大按钮样式 ── */
+.btn-lg-custom {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+}
+
+/* ── 大表单控件样式 ── */
+.form-control-lg-custom {
+    font-size: 1.1rem;
+    padding: 0.75rem 1rem;
+}
+
+/* ── 扩展间距工具 ── */
+.mb-6 {
+    margin-bottom: 3rem !important;
+}
+.mt-6 {
+    margin-top: 3rem !important;
+}
+.g-6 {
+    gap: 2rem !important;
+}
+.p-6 {
+    padding: 2rem !important;
+}
+.p-5 {
+    padding: 1.5rem !important;
+}
+.g-4 {
+    gap: 1.5rem !important;
+}
+
+/* ═══ JSON 代码编辑器（深色主题） ═══ */
+.json-editor-wrapper {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: #1e1e2e;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+}
+
+.json-editor-wrapper:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-rgb), 0.15);
+}
+
+.json-editor-highlight,
+.json-editor-textarea {
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Courier New', Consolas, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    padding: 1rem 1rem 1rem 3.25rem;
+    margin: 0;
+    border: none;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    tab-size: 2;
+    min-height: 220px;
+}
+
+.json-editor-highlight {
+    position: absolute;
+    inset: 0;
+    overflow: auto;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.json-editor-highlight code {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+.json-editor-textarea {
+    position: relative;
+    display: block;
+    width: 100%;
+    color: transparent;
+    caret-color: #f5e0dc;
+    background: transparent;
+    resize: vertical;
+    z-index: 2;
+    outline: none;
+    border-radius: 0;
+}
+
+.json-editor-textarea::selection {
+    background: rgba(137, 180, 250, 0.3);
+}
+
+.json-editor-textarea::placeholder {
+    color: #6c7086;
+    opacity: 1;
+}
+
+.json-editor-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 2.5rem;
+    background: rgba(69, 71, 90, 0.3);
+    border-right: 1px solid rgba(69, 71, 90, 0.5);
+    z-index: 3;
+    pointer-events: none;
+}
+
+/* Prism 深色主题覆盖 — Catppuccin Mocha 风格 */
+.json-editor-highlight .token.property,
+.json-editor-highlight .token.tag,
+.json-editor-highlight .token.boolean,
+.json-editor-highlight .token.number,
+.json-editor-highlight .token.constant,
+.json-editor-highlight .token.symbol,
+.json-editor-highlight .token.deleted { color: #fab387; }
+.json-editor-highlight .token.selector,
+.json-editor-highlight .token.attr-name,
+.json-editor-highlight .token.string,
+.json-editor-highlight .token.char,
+.json-editor-highlight .token.builtin,
+.json-editor-highlight .token.inserted { color: #a6e3a1; }
+.json-editor-highlight .token.punctuation { color: #bac2de; }
+.json-editor-highlight .token.operator,
+.json-editor-highlight .token.entity,
+.json-editor-highlight .token.url { color: #89dceb; }
+.json-editor-highlight .token.atrule,
+.json-editor-highlight .token.attr-value,
+.json-editor-highlight .token.keyword { color: #cba6f7; }
+.json-editor-highlight .token.function,
+.json-editor-highlight .token.class-name { color: #89b4fa; }
+.json-editor-highlight .token.regex,
+.json-editor-highlight .token.important,
+.json-editor-highlight .token.variable { color: #f38ba8; }
+.json-editor-highlight .token.comment,
+.json-editor-highlight .token.prolog,
+.json-editor-highlight .token.doctype,
+.json-editor-highlight .token.cdata { color: #6c7086; font-style: italic; }
+.json-editor-highlight .token.namespace { opacity: 0.7; }

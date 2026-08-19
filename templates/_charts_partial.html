@@ -1,5 +1,16 @@
 {% from 'macros/chart_macros.html' import render_chart_section, render_parallel_chart_section %}
 
+<div class="d-flex align-items-center mb-3">
+    <button type="button" id="btnAlignYAxis"
+            class="btn btn-sm btn-outline-info"
+            onclick="YAxisAligner.toggle()"
+            title="一键对齐所有图表Y轴量程、刻度">
+        <i class="bi bi-arrows-expand-vertical me-1"></i>
+        <span class="btn-text">对齐Y轴</span>
+    </button>
+    <small class="text-muted ms-2" id="yaxisAlignHint">点击后所有图表P1/P2/ST面统一Y轴量程与刻度间隔</small>
+</div>
+
 <!-- 统一的图表类型配置 -->
 {% set chart_type_config = chart_type_config or {
     'trend': {
@@ -60,11 +71,11 @@
                         <div 
                             id="p1_{{ chart_type }}" 
                             class="plotly-chart" 
-                            style="width: 100%; height: 400px; min-height: 300px; max-height: 500px; border: 1px solid #eee; border-radius: 5px; box-sizing: border-box;"
+                            class="plotly-chart chart-partial-iframe"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
                             data-chart-color="#1f77b4"
-                            data-chart-data="{{ chart_files.chart_data if chart_files and 'chart_data' in chart_files else '[]' | safe }}"
+                            data-chart-data='{{ (chart_files.chart_data if chart_files and "chart_data" in chart_files else "[]") | safe }}'
                         ></div>
                     </div>
                 {% endfor %}
@@ -87,11 +98,11 @@
                         <div 
                             id="p2_{{ chart_type }}" 
                             class="plotly-chart" 
-                            style="width: 100%; height: 400px; min-height: 300px; max-height: 500px; border: 1px solid #eee; border-radius: 5px; box-sizing: border-box;"
+                            class="plotly-chart chart-partial-iframe"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
                             data-chart-color="#ff7f0e"
-                            data-chart-data="{{ chart_files.chart_data if chart_files and 'chart_data' in chart_files else '[]' | safe }}"
+                            data-chart-data='{{ (chart_files.chart_data if chart_files and "chart_data" in chart_files else "[]") | safe }}'
                         ></div>
                     </div>
                 {% endfor %}
@@ -114,11 +125,11 @@
                         <div 
                             id="st_{{ chart_type }}" 
                             class="plotly-chart" 
-                            style="width: 100%; height: 400px; min-height: 300px; max-height: 500px; border: 1px solid #eee; border-radius: 5px; box-sizing: border-box;"
+                            class="plotly-chart chart-partial-iframe"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="ST面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
                             data-chart-color="#2ca02c"
-                            data-chart-data="{{ chart_files.chart_data if chart_files and 'chart_data' in chart_files else '[]' | safe }}"
+                            data-chart-data='{{ (chart_files.chart_data if chart_files and "chart_data" in chart_files else "[]") | safe }}'
                         ></div>
                     </div>
                 {% endfor %}
@@ -142,11 +153,11 @@
                         <div 
                             id="single_{{ chart_type }}" 
                             class="plotly-chart" 
-                            style="width: 100%; height: 400px; min-height: 300px; max-height: 500px; border: 1px solid #eee; border-radius: 5px; box-sizing: border-box;"
+                            class="plotly-chart chart-partial-iframe"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="{{ single_surface_title }}{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
                             data-chart-color="#1f77b4"
-                            data-chart-data="{{ chart_files.chart_data if chart_files and 'chart_data' in chart_files else '[]' | safe }}"
+                            data-chart-data='{{ (chart_files.chart_data if chart_files and "chart_data" in chart_files else "[]") | safe }}'
                         ></div>
                     </div>
                 {% endfor %}
@@ -183,11 +194,11 @@
                         <div 
                             id="parallel_p1_{{ chart_type }}" 
                             class="plotly-chart" 
-                            style="width: 100%; height: 300px; min-height: 250px; max-height: 400px; border: 1px solid #eee; border-radius: 5px; box-sizing: border-box;"
+                            class="plotly-chart chart-partial-iframe-sm"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
                             data-chart-color="#1f77b4"
-                            data-chart-data="{{ chart_files.chart_data if chart_files and 'chart_data' in chart_files else '[]' | safe }}"
+                            data-chart-data='{{ (chart_files.chart_data if chart_files and "chart_data" in chart_files else "[]") | safe }}'
                         ></div>
                     </div>
                 {% endfor %}
@@ -209,11 +220,11 @@
                         <div 
                             id="parallel_p2_{{ chart_type }}" 
                             class="plotly-chart" 
-                            style="width: 100%; height: 300px; min-height: 250px; max-height: 400px; border: 1px solid #eee; border-radius: 5px; box-sizing: border-box;"
+                            class="plotly-chart chart-partial-iframe-sm"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
                             data-chart-color="#ff7f0e"
-                            data-chart-data="{{ chart_files.chart_data if chart_files and 'chart_data' in chart_files else '[]' | safe }}"
+                            data-chart-data='{{ (chart_files.chart_data if chart_files and "chart_data" in chart_files else "[]") | safe }}'
                         ></div>
                     </div>
                 {% endfor %}
@@ -235,11 +246,11 @@
                         <div 
                             id="parallel_st_{{ chart_type }}" 
                             class="plotly-chart" 
-                            style="width: 100%; height: 300px; min-height: 250px; max-height: 400px; border: 1px solid #eee; border-radius: 5px; box-sizing: border-box;"
+                            class="plotly-chart chart-partial-iframe-sm"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="ST面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
                             data-chart-color="#2ca02c"
-                            data-chart-data="{{ chart_files.chart_data if chart_files and 'chart_data' in chart_files else '[]' | safe }}"
+                            data-chart-data='{{ (chart_files.chart_data if chart_files and "chart_data" in chart_files else "[]") | safe }}'
                         ></div>
                     </div>
                 {% endfor %}
@@ -262,11 +273,11 @@
                         <div 
                             id="parallel_single_{{ chart_type }}" 
                             class="plotly-chart" 
-                            style="width: 100%; height: 300px; min-height: 250px; max-height: 400px; border: 1px solid #eee; border-radius: 5px; box-sizing: border-box;"
+                            class="plotly-chart chart-partial-iframe-sm"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="{{ single_surface_title }}{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
                             data-chart-color="#1f77b4"
-                            data-chart-data="{{ chart_files.chart_data if chart_files and 'chart_data' in chart_files else '[]' | safe }}"
+                            data-chart-data='{{ (chart_files.chart_data if chart_files and "chart_data" in chart_files else "[]") | safe }}'
                         ></div>
                     </div>
                 {% endfor %}
@@ -294,7 +305,7 @@
                     const chartDataRaw = container.getAttribute('data-chart-data');
                     
                     if (chartId && chartType && chartDataRaw) {
-                        const chartDataUnescaped = chartDataRaw.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+                        const chartDataUnescaped = chartDataRaw.replace(/&#34;/g, '"').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
                         const chartData = JSON.parse(chartDataUnescaped);
                         
                         plotlyManager.initChart(chartId, chartType, chartData, {
@@ -396,6 +407,10 @@
                     container.appendChild(errorMessage);
                 }
             });
+        }
+        if (typeof YAxisAligner !== 'undefined' && YAxisAligner.isAligned()) {
+            YAxisAligner.reset();
+            YAxisAligner.updateButtonState(false);
         }
     }
 </script>

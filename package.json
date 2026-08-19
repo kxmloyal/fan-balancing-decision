@@ -1,30 +1,17 @@
 {
-  "name": "fan-blade-balance-tool",
+  "name": "fan-balance-analysis",
   "version": "1.0.0",
   "description": "扇叶平衡补土转速评估工具",
-  "main": "static/js/charts.js",
+  "main": "app.py",
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc --watch",
-    "lint": "eslint static/js/modules/**/*.ts",
-    "typecheck": "tsc --noEmit",
-    "dev": "tsc --watch"
-  },
-  "keywords": [
-    "fan-blade",
-    "balance",
-    "plotly",
-    "typescript",
-    "chart"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
+    "sass": "sass static/scss/style.scss static/css/style.css",
+    "sass:watch": "sass --watch static/scss/style.scss static/css/style.css",
+    "lint": "stylelint 'static/css/**/*.css'",
+    "lint:fix": "stylelint 'static/css/**/*.css' --fix"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "^8.45.0",
-    "typescript": "^5.0.0"
+    "sass": "^1.77.6",
+    "stylelint": "^16.7.0",
+    "stylelint-config-standard": "^36.0.0"
   }
 }

@@ -2,7 +2,19 @@
   "db_type": "mysql",
   "host": "192.168.90.163",
   "port": "3306",
-  "database": "zs",
+  "database": {
+    "type": "mysql",
+    "name": "zs",
+    "host": "192.168.90.163",
+    "port": "3306",
+    "user": "zs",
+    "password": "T8FxNPCznt6zcPC5"
+  },
   "username": "zs",
-  "password": "gAAAAABpivlnnH3MKWyx1N-XTTdcwmLHAT1wiJ2gz2l00iatEWXcR90m6PNyjzZTr8U1lLmaldiT5mTlU6YlVMrNjCjogQTureT2kvMHZI9Fzo11mscHgKY="
+  "password": "gAAAAABp45xToVMQyyiWktVU9zw7cOl0FQUocWOHHoQ8BYBmDJSY8-CpP_LbCKsx8828apgwaWSS76AnmXvk9jw_HTtlomdncq1ywvcuFi8PeCY67LPhLKQ=",
+  "face_weights": {
+    "P1": 0.4,
+    "P2": 0.4,
+    "ST": 0.2
+  }
 }

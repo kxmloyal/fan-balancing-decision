@@ -1,14 +1,24 @@
-import json
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime, timedelta
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
+from sklearn.cluster import KMeans
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+
+
+def _sanitize_metrics(d: Dict[str, Any]) -> Dict[str, Any]:
+    """替换 dict 中的 NaN/Inf 为 None，防止 JSON 序列化失败"""
+    for k, v in d.items():
+        if isinstance(v, float) and (np.isnan(v) or np.isinf(v)):
+            d[k] = None
+        elif isinstance(v, dict):
+            _sanitize_metrics(v)
+    return d
 
 
 # ========== 机器学习模型包装类 ==========
@@ -22,7 +32,8 @@ class MLModel:
         初始化模型
 
         Args:
-            model_type: 模型类型，可选值：'linear', 'ridge', 'random_forest', 'gradient_boosting'
+            model_type: 模型类型，可选值：'linear', 'ridge', 'random_forest',
+            'gradient_boosting'
         """
         self.model_type = model_type
         self.model = None
@@ -44,9 +55,7 @@ class MLModel:
         else:
             raise ValueError(f"不支持的模型类型：{model_type}")
 
-    def train(
-        self, X: np.ndarray, y: np.ndarray, test_size: float = 0.2
-    ) -> Dict[str, float]:
+    def train(self, X: np.ndarray, y: np.ndarray, test_size: float = 0.2) -> Dict[str, float]:
         """
         训练模型
 
@@ -75,9 +84,13 @@ class MLModel:
         n_test = max(1, min(int(n_samples * test_size), n_samples - 1))
         test_size = n_test / n_samples
 
+        # 标准化特征
+        self.scaler = StandardScaler()
+        X = self.scaler.fit_transform(X)
+
         # 划分训练集和测试集
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=test_size, random_state=42
+            X, y, test_size=test_size, random_state=42, shuffle=False
         )
 
         # 确保训练集非空
@@ -131,6 +144,9 @@ class MLModel:
         if not self.is_trained:
             raise ValueError("模型尚未训练")
 
+        if self.scaler is not None:
+            X = self.scaler.transform(X)
+
         return self.model.predict(X)
 
 
@@ -151,100 +167,80 @@ def predict_trend(
     Returns:
         dict: 预测结果，包含历史数据、预测数据和模型评估指标
     """
-    # 转换为DataFrame
     df = pd.DataFrame(historical_data)
 
-    # 确保日期列是datetime类型
-    df["date"] = pd.to_datetime(df["date"])
-
-    # 按日期排序
-    df = df.sort_values("date")
-
-    # 特征工程：添加时间序列特征
-    df["day_of_week"] = df["date"].dt.dayofweek
-    df["month"] = df["date"].dt.month
-    df["day_of_year"] = df["date"].dt.dayofyear
+    # 尝试解析日期 → 失败时使用序数编码（支持 "2800rpm" 等非日期格式）
+    use_ordinal = False
+    try:
+        df["_date_dt"] = pd.to_datetime(df["date"])
+        df = df.sort_values("_date_dt")
+        df["day_of_week"] = df["_date_dt"].dt.dayofweek
+        df["month"] = df["_date_dt"].dt.month
+        df["day_of_year"] = df["_date_dt"].dt.dayofyear
+    except (ValueError, TypeError):
+        use_ordinal = True
+        df = df.reset_index(drop=True)
+        df["_ordinal"] = range(1, len(df) + 1)
 
     # 添加滞后特征
     for i in range(1, 4):
         df[f"lag_{i}"] = df["value"].shift(i)
 
-    # 删除包含NaN值的行
     df = df.dropna()
 
-    # 如果数据量不足，使用简单平均预测
-    if len(df) < 5:
-        avg_value = df["value"].mean()
+    if use_ordinal:
+        features = ["_ordinal", "lag_1", "lag_2", "lag_3"]
+        future_start = int(df["_ordinal"].max()) + 1
+    else:
+        features = ["day_of_week", "month", "day_of_year", "lag_1", "lag_2", "lag_3"]
 
-        # 准备预测数据
-        last_date = df["date"].max()
-        future_dates = [
-            last_date + pd.Timedelta(days=i + 1) for i in range(prediction_days)
-        ]
-
-        # 使用平均值进行预测
-        future_predictions = [avg_value for _ in range(prediction_days)]
-
-        # 构建结果
-        result = {
+    # 数据量不足 → 简单平均
+    if len(df) < 3:
+        avg_value = float(df["value"].mean()) if len(df) > 0 else 0.0
+        future_predictions = [{"date": f"预测{i + 1}", "value": avg_value} for i in range(prediction_days)]
+        return _sanitize_metrics({
             "historical_data": df[["date", "value"]].to_dict("records"),
-            "prediction_data": [
-                {"date": date.strftime("%Y-%m-%d"), "value": float(pred)}
-                for date, pred in zip(future_dates, future_predictions)
-            ],
-            "model_metrics": {
-                "method": "simple_average",
-                "avg_value": float(avg_value),
-                "n_samples": len(df),
-            },
+            "prediction_data": future_predictions,
+            "model_metrics": {"method": "simple_average", "avg_value": avg_value, "n_samples": len(df)},
             "model_type": "simple_average",
             "prediction_days": prediction_days,
-        }
+        })
 
-        return result
-
-    # 准备训练数据
-    features = ["day_of_week", "month", "day_of_year", "lag_1", "lag_2", "lag_3"]
     X = df[features].values
     y = df["value"].values
 
-    # 初始化并训练模型
     model = MLModel(model_type=model_type)
-    metrics = model.train(X, y)
+    metrics = _sanitize_metrics(model.train(X, y))
 
-    # 准备预测数据
-    last_date = df["date"].max()
-    future_dates = [
-        last_date + pd.Timedelta(days=i + 1) for i in range(prediction_days)
-    ]
+    # 生成预测
+    last_values = df["value"].tail(3).tolist()
+    if len(last_values) < 3:
+        last_values = [last_values[-1]] * 3
+    last_values = last_values[::-1]
 
-    # 生成预测特征
-    future_df = pd.DataFrame({"date": future_dates})
-    future_df["day_of_week"] = future_df["date"].dt.dayofweek
-    future_df["month"] = future_df["date"].dt.month
-    future_df["day_of_year"] = future_df["date"].dt.dayofyear
+    future_predictions = []
+    current_lags = list(last_values)
+    base_ordinal = future_start if use_ordinal else 0
+    last_date_dt = df["_date_dt"].max() if not use_ordinal else None
 
-    # 使用最近的历史值作为滞后特征
-    for i in range(1, 4):
-        future_df[f"lag_{i}"] = df["value"].iloc[-i]
+    for step in range(prediction_days):
+        if use_ordinal:
+            sample = np.array([[base_ordinal + step + 1, current_lags[0], current_lags[1], current_lags[2]]])
+        else:
+            next_date = last_date_dt + pd.Timedelta(days=step + 1)
+            sample = np.array([[next_date.dayofweek, next_date.month, next_date.dayofyear, current_lags[0], current_lags[1], current_lags[2]]])
 
-    # 进行预测
-    X_future = future_df[features].values
-    future_predictions = model.predict(X_future)
+        pred = float(model.predict(sample)[0])
+        future_predictions.append({"date": f"预测{step + 1}", "value": pred})
+        current_lags = current_lags[1:] + [pred]
 
-    # 构建结果
-    result = {
+    return _sanitize_metrics({
         "historical_data": df[["date", "value"]].to_dict("records"),
-        "prediction_data": [
-            {"date": date.strftime("%Y-%m-%d"), "value": float(pred)}
-            for date, pred in zip(future_dates, future_predictions)
-        ],
+        "prediction_data": future_predictions,
         "model_metrics": metrics,
         "model_type": model_type,
         "prediction_days": prediction_days,
-    }
-
-    return result
+    })
 
 
 # ========== 关键指标预测函数 ==========
@@ -292,13 +288,13 @@ def predict_key_metrics(
             }
 
         # 构建结果
-        result = {
+        result = _sanitize_metrics({
             "historical_data": df.to_dict("records"),
             "predictions": predictions,
             "metrics_results": metrics_results,
             "model_type": "simple_average",
             "prediction_periods": prediction_periods,
-        }
+        })
 
         return result
 
@@ -363,13 +359,13 @@ def predict_key_metrics(
             metrics_results[metric] = metrics
 
     # 构建结果
-    result = {
+    result = _sanitize_metrics({
         "historical_data": df.to_dict("records"),
         "predictions": predictions,
         "metrics_results": metrics_results,
         "model_type": model_type,
         "prediction_periods": prediction_periods,
-    }
+    })
 
     return result
 
@@ -412,13 +408,24 @@ def multi_dimensional_analysis(
     # 计算整体统计量
     overall_stats = {}
     for metric in metrics:
+        values = pd.to_numeric(df[metric], errors="coerce").dropna()
+        if len(values) == 0:
+            overall_stats[metric] = {
+                "mean": 0,
+                "median": 0,
+                "std": 0,
+                "min": 0,
+                "max": 0,
+                "count": 0,
+            }
+            continue
         overall_stats[metric] = {
-            "mean": float(df[metric].mean()),
-            "median": float(df[metric].median()),
-            "std": float(df[metric].std()),
-            "min": float(df[metric].min()),
-            "max": float(df[metric].max()),
-            "count": int(df[metric].count()),
+            "mean": float(values.mean()),
+            "median": float(values.median()),
+            "std": float(values.std()),
+            "min": float(values.min()),
+            "max": float(values.max()),
+            "count": int(values.count()),
         }
 
     analysis_result["summary"]["overall"] = overall_stats
@@ -428,59 +435,57 @@ def multi_dimensional_analysis(
     groups = {}
 
     for _, row in df.iterrows():
-        # 生成分组键
         if len(dimensions) == 1:
-            group_key = str(row[dimensions[0]])
+            group_key = row[dimensions[0]]
         else:
-            group_key = tuple(str(row[dim]) for dim in dimensions)
-            group_key = "_".join(group_key)
+            group_key = tuple(row[dim] for dim in dimensions)
 
-        # 将数据添加到对应分组
         if group_key not in groups:
             groups[group_key] = []
         groups[group_key].append(row)
 
-    # 对每个分组计算统计量
     for group_key, group_rows in groups.items():
-        # 将分组数据转换为DataFrame
         group_df = pd.DataFrame(group_rows)
 
-        # 创建详细数据条目
         detailed_entry = {}
 
-        # 填充维度值
         if len(dimensions) == 1:
-            detailed_entry[dimensions[0]] = group_key
+            detailed_entry[dimensions[0]] = str(group_key)
         else:
-            # 从group_key中解析出各维度值
-            dimension_values = group_key.split("_")
             for i, dim in enumerate(dimensions):
-                detailed_entry[dim] = dimension_values[i]
+                detailed_entry[dim] = str(group_key[i])
 
-        # 计算分组统计量
         group_stats = {}
         for metric in metrics:
-            metric_values = group_df[metric]
+            metric_values = pd.to_numeric(group_df[metric], errors="coerce").dropna()
+            if len(metric_values) == 0:
+                group_stats[metric] = {
+                    "mean": 0,
+                    "median": 0,
+                    "std": 0,
+                    "min": 0,
+                    "max": 0,
+                    "count": 0,
+                }
+                continue
+            metric_std = float(metric_values.std()) if len(metric_values) >= 2 else 0.0
             group_stats[metric] = {
                 "mean": float(metric_values.mean()),
                 "median": float(metric_values.median()),
-                "std": float(metric_values.std()),
+                "std": metric_std,
                 "min": float(metric_values.min()),
                 "max": float(metric_values.max()),
-                "count": int(metric_values.count()),
+                "count": int(len(metric_values)),
             }
 
-        # 保存分组统计量
-        analysis_result["summary"][group_key] = group_stats
+        analysis_result["summary"][str(group_key)] = group_stats
 
-        # 填充详细数据的统计量
         for metric in metrics:
             detailed_entry[f"{metric}_mean"] = group_stats[metric]["mean"]
             detailed_entry[f"{metric}_median"] = group_stats[metric]["median"]
             detailed_entry[f"{metric}_std"] = group_stats[metric]["std"]
             detailed_entry[f"{metric}_count"] = group_stats[metric]["count"]
 
-        # 添加到详细数据列表
         analysis_result["detailed"].append(detailed_entry)
 
     return analysis_result
@@ -494,40 +499,240 @@ def detect_anomaly_patterns(
     检测时间序列数据中的异常模式
 
     Args:
-        data: 时间序列数据
+        data: 时间序列数据 [{date, value}, ...]
         window_size: 滑动窗口大小
         threshold: 异常检测阈值
 
     Returns:
         list: 异常模式列表
     """
-    # 转换为DataFrame
     df = pd.DataFrame(data)
 
-    # 确保日期列是datetime类型
-    if "date" in df.columns:
-        df["date"] = pd.to_datetime(df["date"])
-        df = df.sort_values("date")
+    if "date" in df.columns and "value" in df.columns:
+        # 尝试解析日期 → 失败时保持原始 date 字符串
+        try:
+            df["date"] = pd.to_datetime(df["date"])
+            df = df.sort_values("date")
+        except (ValueError, TypeError):
+            pass
 
     # 计算滑动窗口统计量
-    df["rolling_mean"] = df["value"].rolling(window=window_size).mean()
-    df["rolling_std"] = df["value"].rolling(window=window_size).std()
+    df["rolling_mean"] = df["value"].rolling(window=min(window_size, len(df)), min_periods=2).mean()
+    df["rolling_std"] = df["value"].rolling(window=min(window_size, len(df)), min_periods=2).std()
 
     # 计算Z分数
     df["z_score"] = (df["value"] - df["rolling_mean"]) / df["rolling_std"]
-    df["z_score"] = df["z_score"].fillna(0)  # 处理NaN值
+
+    valid_mask = df["z_score"].notna() & ~np.isinf(df["z_score"])
+    df["z_score"] = df["z_score"].where(valid_mask, 0.0)
+
+    n_valid = valid_mask.sum()
+    if n_valid < 2:
+        return []
 
     # 检测异常
     anomalies = df[abs(df["z_score"]) > threshold]
 
-    # 转换为结果格式
-    anomaly_list = anomalies.to_dict("records")
-
-    # 添加异常类型
-    for anomaly in anomaly_list:
-        if anomaly["z_score"] > threshold:
-            anomaly["anomaly_type"] = "high"
-        else:
-            anomaly["anomaly_type"] = "low"
+    anomaly_list = []
+    for _, row in anomalies.iterrows():
+        item = {"date": str(row["date"]), "value": float(row["value"]), "z_score": float(row["z_score"])}
+        item["anomaly_type"] = "high" if item["z_score"] > threshold else "low"
+        anomaly_list.append(item)
 
     return anomaly_list
+
+
+def detect_outliers_iqr(data: List[float]) -> Dict[str, Any]:
+    """
+    使用 IQR 方法检测异常值（适用于小样本场景）
+
+    Args:
+        data: 数值列表
+
+    Returns:
+        dict: 异常值检测结果，包含异常值列表、边界值和IQR
+    """
+    if not data or len(data) < 4:
+        return {
+            "outliers": [],
+            "lower_bound": None,
+            "upper_bound": None,
+            "iqr": None,
+            "q1": None,
+            "q3": None,
+        }
+
+    arr = np.array(data, dtype=float)
+    q1 = float(np.percentile(arr, 25))
+    q3 = float(np.percentile(arr, 75))
+    iqr = q3 - q1
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
+    outliers = [float(x) for x in arr if x < lower_bound or x > upper_bound]
+
+    return {
+        "outliers": outliers,
+        "outlier_count": len(outliers),
+        "total_count": len(data),
+        "outlier_ratio": round(len(outliers) / len(data), 4),
+        "lower_bound": round(lower_bound, 6),
+        "upper_bound": round(upper_bound, 6),
+        "iqr": round(iqr, 6),
+        "q1": round(q1, 6),
+        "q3": round(q3, 6),
+    }
+
+
+def cluster_balance_data(
+    surface_data: List[Dict[str, Any]], n_clusters: int = 3, random_state: int = 42
+) -> Dict[str, Any]:
+    """
+    对平衡面测量数据进行 KMeans 聚类分析
+
+    基于 P1/P2 面的中位数和标准差构建 4 维特征向量进行聚类，
+    适用于将不同转速/条件下的测量数据分组为相似工艺组。
+
+    Args:
+        surface_data: 平衡面数据列表，每项包含 speed/p1_samples/p2_samples
+        n_clusters: 聚类数量
+        random_state: 随机种子
+
+    Returns:
+        dict: 聚类结果，包含标签、中心点、特征和转速标注
+    """
+    features = []
+    speed_labels = []
+    valid_indices = []
+
+    for i, item in enumerate(surface_data):
+        p1_samples = item.get("p1_samples", [])
+        p2_samples = item.get("p2_samples", [])
+
+        if not p1_samples and not p2_samples:
+            continue
+
+        p1_med = float(np.median(p1_samples)) if p1_samples else 0.0
+        p1_std = float(np.std(p1_samples)) if len(p1_samples) >= 2 else 0.0
+        p2_med = float(np.median(p2_samples)) if p2_samples else 0.0
+        p2_std = float(np.std(p2_samples)) if len(p2_samples) >= 2 else 0.0
+
+        features.append([p1_med, p1_std, p2_med, p2_std])
+        speed_labels.append(str(item.get("speed", f"item_{i}")))
+        valid_indices.append(i)
+
+    if len(features) < 2:
+        return {"clusters": [], "speed_labels": [], "error": "数据量不足，至少需要2组以上有效数据"}
+
+    actual_clusters = min(n_clusters, len(features))
+    if actual_clusters < n_clusters:
+        n_clusters = actual_clusters
+
+    scaler = StandardScaler()
+    scaled_features = scaler.fit_transform(features)
+
+    kmeans = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
+    cluster_labels = kmeans.fit_predict(scaled_features)
+
+    centers_orig = scaler.inverse_transform(kmeans.cluster_centers_)
+    cluster_centers = []
+    for center in centers_orig:
+        cluster_centers.append(
+            {
+                "p1_median": round(float(center[0]), 6),
+                "p1_std": round(float(center[1]), 6),
+                "p2_median": round(float(center[2]), 6),
+                "p2_std": round(float(center[3]), 6),
+            }
+        )
+
+    inertia = float(kmeans.inertia_)
+
+    cluster_summary = {}
+    for label in range(n_clusters):
+        members = [
+            speed_labels[i] for i in range(len(cluster_labels)) if cluster_labels[i] == label
+        ]
+        cluster_summary[str(label)] = {
+            "count": len(members),
+            "members": members,
+        }
+
+    return {
+        "clusters": [int(c) for c in cluster_labels],
+        "cluster_centers": cluster_centers,
+        "speed_labels": speed_labels,
+        "inertia": round(inertia, 6),
+        "n_clusters": n_clusters,
+        "cluster_summary": cluster_summary,
+    }
+
+
+def analyze_balance_data(
+    balance_records: List[Dict[str, Any]],
+    fan_model: str = "",
+) -> Dict[str, Any]:
+    """
+    平衡数据综合 ML 分析——一次调用完成趋势+聚类+异常三合一分析
+
+    Args:
+        balance_records: 平衡测量记录列表，每项含 speed/p1_samples/p2_samples/p1_value/p2_value/st_value
+        fan_model: 扇叶型号（元数据标注）
+
+    Returns:
+        dict: 综合分析结果，包含 trend/cluster/anomaly 三个子结果
+    """
+    if not balance_records:
+        return {"error": "无有效数据", "fan_model": fan_model}
+
+    result = {"fan_model": fan_model, "n_records": len(balance_records)}
+
+    cluster_result = cluster_balance_data(balance_records)
+    result["cluster_analysis"] = cluster_result
+
+    anomaly_records = []
+    for rec in balance_records:
+        for face in ["p1", "p2", "st"]:
+            samples_key = f"{face}_samples"
+            samples = rec.get(samples_key, [])
+            if samples:
+                iqr_result = detect_outliers_iqr(samples)
+                if iqr_result["outliers"]:
+                    anomaly_records.append(
+                        {
+                            "speed": str(rec.get("speed", "")),
+                            "surface": face.upper(),
+                            "anomalies": iqr_result["outliers"],
+                            "outlier_ratio": iqr_result["outlier_ratio"],
+                            "iqr": iqr_result["iqr"],
+                        }
+                    )
+    result["anomaly_analysis"] = {
+        "total_anomalies": len(anomaly_records),
+        "anomaly_details": anomaly_records,
+        "method": "IQR_1.5x",
+    }
+
+    today = datetime.now().date()
+    trend_data = []
+    for i, rec in enumerate(balance_records):
+        p1_val = rec.get("p1_value")
+        p2_val = rec.get("p2_value")
+        st_val = rec.get("st_value")
+
+        available = [v for v in [p1_val, p2_val, st_val] if v is not None]
+        if available:
+            value = float(np.mean(available))
+        else:
+            value = 0.0
+
+        trend_data.append(
+            {
+                "date": (today - timedelta(days=len(balance_records) - 1 - i)).strftime("%Y-%m-%d"),
+                "value": value,
+            }
+        )
+
+    trend_result = predict_trend(trend_data)
+    result["trend_analysis"] = trend_result
+
+    return result

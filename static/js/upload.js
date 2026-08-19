@@ -30,9 +30,40 @@ class UploadProgress {
      */
     handleFile(fileInput, file) {
         const fileNameDisplay = document.getElementById(this.fileNameMap[fileInput.id]);
-        
+
         if (file) {
-            fileNameDisplay.innerHTML = `<i class="bi bi-check-circle me-1"></i>已选择：${file.name}`;
+            const ALLOWED_TYPES = [
+                'text/csv',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            ];
+            const MAX_FILE_SIZE = 16 * 1024 * 1024;
+
+            if (!ALLOWED_TYPES.includes(file.type) && !/\.(csv|xlsx|xls)$/i.test(file.name)) {
+                const errorEl = document.getElementById(fileInput.id + '-error') ||
+                    fileInput.parentElement.querySelector('.upload-error');
+                if (errorEl) {
+                    errorEl.textContent = '\u4e0d\u652f\u6301\u7684\u6587\u4ef6\u7c7b\u578b\uff0c\u4ec5\u652f\u6301 .csv/.xlsx/.xls \u6587\u4ef6';
+                    errorEl.style.display = 'block';
+                    setTimeout(function () { errorEl.style.display = 'none'; }, 5000);
+                }
+                fileInput.value = '';
+                return;
+            }
+
+            if (file.size > MAX_FILE_SIZE) {
+                const errorEl = document.getElementById(fileInput.id + '-error') ||
+                    fileInput.parentElement.querySelector('.upload-error');
+                if (errorEl) {
+                    errorEl.textContent = '\u6587\u4ef6\u5927\u5c0f\u8d85\u8fc7 16MB \u4e0a\u9650';
+                    errorEl.style.display = 'block';
+                    setTimeout(function () { errorEl.style.display = 'none'; }, 5000);
+                }
+                fileInput.value = '';
+                return;
+            }
+
+            fileNameDisplay.textContent = '\u2714 \u5df2\u9009\u62e9\uff1a' + file.name;
             this.createProgressBar(fileInput, file);
         }
     }
@@ -48,8 +79,8 @@ class UploadProgress {
 
     handleDragOver(event, area) {
         event.preventDefault();
-        area.style.borderColor = '#0d6efd';
-        area.style.backgroundColor = '#e7f1ff';
+        area.style.borderColor = 'var(--primary-color)';
+        area.style.backgroundColor = 'rgba(var(--primary-rgb), 0.06)';
     }
 
     handleDragLeave(event, area) {
@@ -65,15 +96,44 @@ class UploadProgress {
         const files = event.dataTransfer.files;
         if (files.length > 0) {
             const file = files[0];
-            if (file.name.match(/\.(csv|xlsx|xls)$/i)) {
-                // 查找当前拖放区域内的文件输入元素
+            const ALLOWED_TYPES = [
+                'text/csv',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            ];
+            const MAX_FILE_SIZE = 16 * 1024 * 1024;
+
+            const typeValid = ALLOWED_TYPES.includes(file.type) || /\.(csv|xlsx|xls)$/i.test(file.name);
+            const sizeValid = file.size <= MAX_FILE_SIZE;
+
+            if (typeValid && sizeValid) {
                 const fileInput = area.querySelector('input[type="file"]');
                 if (fileInput && this.fileNameMap[fileInput.id]) {
                     fileInput.files = files;
                     this.handleFile(fileInput, file);
                 }
             } else {
-                alert('请上传CSV、XLS或XLSX格式的文件');
+                if (!typeValid) {
+                    const errorEl = area.querySelector('.upload-error');
+                    if (errorEl) {
+                        errorEl.textContent = '\u4e0d\u652f\u6301\u7684\u6587\u4ef6\u7c7b\u578b\uff0c\u4ec5\u652f\u6301 .csv/.xlsx/.xls \u6587\u4ef6';
+                        errorEl.style.display = 'block';
+                        setTimeout(function () { errorEl.style.display = 'none'; }, 5000);
+                    } else {
+                        area.style.color = '#ef4444';
+                        setTimeout(function () { area.style.color = ''; }, 2000);
+                    }
+                } else {
+                    const errorEl = area.querySelector('.upload-error');
+                    if (errorEl) {
+                        errorEl.textContent = '\u6587\u4ef6\u5927\u5c0f\u8d85\u8fc7 16MB \u4e0a\u9650';
+                        errorEl.style.display = 'block';
+                        setTimeout(function () { errorEl.style.display = 'none'; }, 5000);
+                    } else {
+                        area.style.color = '#ef4444';
+                        setTimeout(function () { area.style.color = ''; }, 2000);
+                    }
+                }
             }
         }
     }
@@ -192,7 +252,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    console.log('表单提交验证已初始化');
 });
 
 // 自动折叠上传区域功能
@@ -371,5 +430,4 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化自动折叠上传功能
     window.autoCollapseUpload = new AutoCollapseUpload();
     
-    console.log('所有上传相关功能已初始化');
 });

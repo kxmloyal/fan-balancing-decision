@@ -3,279 +3,358 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>数据库设置 - 扇叶平衡补土转速评估工具</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='libs/bootstrap/css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='libs/bootstrap-icons/bootstrap-icons.css') }}">
-    <script src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{{ url_for('static', filename='js/reset-manager.js') }}"></script>
-    <style>
-        .form-container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            font-weight: 600;
-            margin-bottom: 5px;
-            display: block;
-        }
-        .form-control {
-            border-radius: 4px;
-        }
-        .btn {
-            margin-right: 10px;
-            margin-bottom: 10px;
-        }
-        .alert {
-            margin-top: 15px;
-        }
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-left: 10px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .db-type-specific {
-            display: block;
-        }
-        .db-type-specific.hidden {
-            display: none;
-        }
-    </style>
+    <title>系统设置 — 扇叶平衡补土转速评估工具</title>
+    <link href="{{ url_for('static', filename='libs/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='libs/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/settings.css') }}" rel="stylesheet">
+    <script defer src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 </head>
 <body>
     {% import 'macros/navbar.html' as navbar_macros %}
     {{ navbar_macros.render_navbar(active_page='settings') }}
 
-    <div class="container mt-4">
-        <h1 class="text-center mb-4">
-            <i class="bi bi-database"></i> 数据库连接设置
-        </h1>
+    <!-- Toast 通知栈 -->
+    <div id="settingsToastStack" class="toast-stack"></div>
 
-        <!-- 消息提示 -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}" role="alert">
-                        {{ message }}
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+    <div class="container mt-4 mb-5">
 
-        <div class="form-container">
-            <form id="db-config-form" method="POST" action="{{ url_for('settings.save_db_config') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="form-group">
-                    <label for="db_type">数据库类型 *</label>
-                    <select class="form-control" id="db_type" name="db_type" required>
-                        {% for db in db_types %}
-                            <option value="{{ db.value }}" {% if current_config.db_type == db.value %}selected{% endif %}>{{ db.label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="db-type-specific" id="mysql-specific">
-                    <div class="form-group">
-                        <label for="host">主机地址 *</label>
-                        <input type="text" class="form-control" id="host" name="host" value="{{ current_config.host }}" placeholder="例如: localhost 或 127.0.0.1">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="port">端口号 *</label>
-                        <input type="number" class="form-control" id="port" name="port" value="{{ current_config.port }}" placeholder="例如: 3306">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="database">数据库名称 *</label>
-                        <input type="text" class="form-control" id="database" name="database" value="{{ current_config.database }}" placeholder="例如: boxplot_tool">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="username">用户名 *</label>
-                        <input type="text" class="form-control" id="username" name="username" value="{{ current_config.username }}" placeholder="例如: root">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="password">密码</label>
-                        <input type="password" class="form-control" id="password" name="password" value="{{ current_config.password }}" placeholder="输入数据库密码">
-                    </div>
-                </div>
-
-                <div class="db-type-specific" id="postgresql-specific">
-                    <div class="form-group">
-                        <label for="host">主机地址 *</label>
-                        <input type="text" class="form-control" id="host" name="host" value="{{ current_config.host }}" placeholder="例如: localhost 或 127.0.0.1">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="port">端口号 *</label>
-                        <input type="number" class="form-control" id="port" name="port" value="{{ current_config.port }}" placeholder="例如: 5432">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="database">数据库名称 *</label>
-                        <input type="text" class="form-control" id="database" name="database" value="{{ current_config.database }}" placeholder="例如: boxplot_tool">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="username">用户名 *</label>
-                        <input type="text" class="form-control" id="username" name="username" value="{{ current_config.username }}" placeholder="例如: postgres">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="password">密码</label>
-                        <input type="password" class="form-control" id="password" name="password" value="{{ current_config.password }}" placeholder="输入数据库密码">
-                    </div>
-                </div>
-
-                <div class="db-type-specific" id="sqlite-specific">
-                    <div class="alert alert-info">
-                        SQLite 数据库将存储在应用程序目录中的 data.db 文件中。
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="save_method">保存方式</label>
-                    <select class="form-control" id="save_method" name="save_method">
-                        <option value="file">保存到配置文件</option>
-                        <option value="env">保存到环境变量</option>
-                    </select>
-                </div>
-
-                <div class="form-group text-center">
-                    <button type="button" class="btn btn-primary" id="test-connection-btn">
-                        <i class="bi bi-activity"></i> 测试连接
-                    </button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-save"></i> 保存配置
-                    </button>
-                    <a href="{{ url_for('settings.reset_db_config') }}" class="btn btn-danger">
-                        <i class="bi bi-trash"></i> 重置配置
-                    </a>
-                </div>
-            </form>
+        <!-- ═══ Hero 标题栏 + 实时状态指示 ═══ -->
+        <div class="settings-hero d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <h2><i class="bi bi-sliders2-vertical me-2"></i>系统设置</h2>
+                <p class="mb-0">管理数据库连接、算法权重与平衡机型号</p>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="d-flex align-items-center gap-2">
+                    <span id="mainDbStatus" class="db-status-indicator unknown"><i class="bi bi-database"></i></span>
+                    <small style="color:rgba(255,255,255,0.85)">主数据库</small>
+                </span>
+                <span id="heroStatusDot" class="status-dot"></span>
+            </div>
         </div>
 
-        <div class="mt-4">
-            <h3 class="text-center">当前配置</h3>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th>配置项</th>
-                            <th>当前值</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>数据库类型</td>
-                            <td>{{ current_config.db_type | capitalize }}</td>
-                        </tr>
-                        <tr>
-                            <td>主机地址</td>
-                            <td>{{ current_config.host or 'N/A' }}</td>
-                        </tr>
-                        <tr>
-                            <td>端口号</td>
-                            <td>{{ current_config.port or 'N/A' }}</td>
-                        </tr>
-                        <tr>
-                            <td>数据库名称</td>
-                            <td>{{ current_config.database or 'N/A' }}</td>
-                        </tr>
-                        <tr>
-                            <td>用户名</td>
-                            <td>{{ current_config.username or 'N/A' }}</td>
-                        </tr>
-                        <tr>
-                            <td>密码</td>
-                            <td>{% if current_config.password %}******{% else %}N/A{% endif %}</td>
-                        </tr>
-                    </tbody>
-                </table>
+        <div class="row g-4">
+            <!-- ═══ 左侧 Sticky 侧边导航 ═══ -->
+
+            <div class="col-lg-3">
+                <nav class="settings-sidenav" id="settingsSidenav">
+                    <h6 class="sidenav-title"><i class="bi bi-gear me-2"></i>设置导航</h6>
+                    <a class="sidenav-link active" href="#db-status" data-section="db-status">
+                        <i class="bi bi-activity me-2"></i>数据库连接状态
+                    </a>
+                    <a class="sidenav-link" href="#db-connection" data-section="db-connection">
+                        <i class="bi bi-plug me-2"></i>数据库连接配置
+                    </a>
+                    <a class="sidenav-link" href="#weights" data-section="weights">
+                        <i class="bi bi-calculator me-2"></i>算法权重配置
+                    </a>
+                    <a class="sidenav-link" href="#balancer-models" data-section="balancer-models">
+                        <i class="bi bi-grid-3x3-gap me-2"></i>平衡机型号管理
+                    </a>
+                </nav>
+            </div>
+
+            <!-- ═══ 右侧内容区 ═══ -->
+            <div class="col-lg-9">
+
+        <!-- ═══ 面板 0: 数据库实时状态 ═══ -->
+        <div class="db-status-panel" id="db-status">
+            <div class="settings-panel-header">
+                <h5><i class="bi bi-activity me-2"></i>数据库连接状态</h5>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" id="clearCacheBtn" title="清除连接测试缓存">
+                        <i class="bi bi-arrow-repeat me-1"></i>清除缓存
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="window.location.reload()" title="手动刷新状态">
+                        <i class="bi bi-arrow-clockwise me-1"></i>刷新
+                    </button>
+                </div>
+            </div>
+            <div class="db-status-grid" id="dbStatusGrid">
+                <!-- 主数据库状态卡片 -->
+                <div class="db-status-card" id="mainDbInfo">
+                    <span id="mainDbIndicator" class="db-status-indicator unknown"><i class="bi bi-database"></i></span>
+                    <div class="db-status-info">
+                        <strong>主数据库</strong>
+                        <span class="db-type-label">加载中...</span>
+                        <span class="db-detail">正在检测连接状态</span>
+                        <span class="db-status-badge pending">● 检测中</span>
+                    </div>
+                </div>
+                <!-- 连接池状态卡片 -->
+                <div class="db-status-card" id="dbPoolInfo">
+                    <span class="db-status-indicator unknown"><i class="bi bi-diagram-3"></i></span>
+                    <div class="db-status-info">
+                        <strong>连接池</strong>
+                        <span class="db-type-label">加载中...</span>
+                        <span class="db-detail">正在获取连接池信息</span>
+                        <span class="db-status-badge pending">● 检测中</span>
+                    </div>
+                </div>
+                <!-- 已保存连接统计卡片 -->
+                <div class="db-status-card" id="savedConnsInfo">
+                    <span class="db-status-indicator unknown"><i class="bi bi-journal-bookmark"></i></span>
+                    <div class="db-status-info">
+                        <strong>已保存连接</strong>
+                        <span class="db-type-label" id="savedConnsCount">— 条配置</span>
+                        <span class="db-detail">点击下方列表查看详情</span>
+                        <span class="db-status-badge pending">● 加载中</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ 面板 1: 数据库连接配置 ═══ -->
+        <div class="row" id="db-connection">
+            <div class="col-lg-7">
+                <div class="settings-panel" id="connectionFormCard">
+                    <div class="settings-panel-header">
+                        <h5><i class="bi bi-plug me-2"></i>数据库连接配置</h5>
+                    </div>
+                    <div class="settings-panel-body">
+                        <form id="db-config-form" action="{{ url_for('settings.save_db_config') }}" method="POST" class="needs-validation" novalidate>
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" id="connection_id" name="connection_id" value="">
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="connection_name" class="form-label fw-semibold">连接名称</label>
+                                    <input type="text" class="form-control" id="connection_name" name="name"
+                                           placeholder="例如: 生产MySQL" required>
+                                    <div class="form-text small">用于区分不同的数据库连接</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="connection_type" class="form-label fw-semibold">数据库类型</label>
+                                    <select class="form-select" id="connection_type" name="db_type" required>
+                                        <option value="">请选择...</option>
+                                        <option value="mysql" {% if db_config.db_type == 'mysql' %}selected{% endif %}>MySQL / MariaDB</option>
+                                        <option value="postgresql" {% if db_config.db_type == 'postgresql' %}selected{% endif %}>PostgreSQL</option>
+                                        <option value="mongodb" {% if db_config.db_type == 'mongodb' %}selected{% endif %}>MongoDB</option>
+                                        <option value="sqlite" {% if db_config.db_type == 'sqlite' %}selected{% endif %}>SQLite</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div id="connection_params" class="mt-3"></div>
+
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save me-1"></i>保存连接配置
+                                </button>
+                                <button type="button" id="test-connection-btn" class="btn btn-outline-success">
+                                    <i class="bi bi-lightning-charge me-1"></i>测试连接
+                                </button>
+                                <button type="button" id="deleteConnectionBtn" class="btn btn-outline-danger" style="display:none">
+                                    <i class="bi bi-trash me-1"></i>删除此连接
+                                </button>
+                            </div>
+                        </form>
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                        {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} mt-3 mb-0">{{ message }}</div>
+                        {% endfor %}
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="settings-panel">
+                    <div class="settings-panel-header">
+                        <h5><i class="bi bi-list-ul me-2"></i>已保存的连接</h5>
+                    </div>
+                    <div class="settings-panel-body p-0">
+                        <div id="connectionsListBody" class="connections-scroll-box">
+                            <div class="text-center py-3 text-muted small">
+                                <i class="bi bi-inbox d-block mb-2 opacity-50"></i>暂无已保存的连接
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ 面板 2: 算法权重配置 ═══ -->
+        <div class="settings-panel" id="weights">
+            <div class="settings-panel-header">
+                <h5><i class="bi bi-calculator me-2"></i>算法权重配置</h5>
+                <small class="text-muted">端面权重影响最优转速推荐的计算倾向</small>
+            </div>
+            <div class="settings-panel-body">
+                <div class="weight-formula-box">
+                    <span class="formula">
+                        最优转速评分 = <strong>IQR</strong> × <span class="text-success">40%</span> + <strong>CV</strong> × <span class="text-success">40%</span> + <strong>幅值</strong> × <span class="text-success">20%</span>
+                    </span>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="weight-slider-group">
+                            <label for="weight_p1" class="form-label mb-0 fw-semibold" style="min-width:3em">P1面</label>
+                            <input type="range" class="form-range" id="weight_p1" min="0" max="2" step="0.01"
+                                   value="{{ face_weights.P1 }}">
+                            <span class="weight-value-badge bg-primary bg-opacity-10 text-primary" id="weight_p1_val">0.00</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="weight-slider-group">
+                            <label for="weight_p2" class="form-label mb-0 fw-semibold" style="min-width:3em">P2面</label>
+                            <input type="range" class="form-range" id="weight_p2" min="0" max="2" step="0.01"
+                                   value="{{ face_weights.P2 }}">
+                            <span class="weight-value-badge bg-success bg-opacity-10 text-success" id="weight_p2_val">0.00</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="weight-slider-group">
+                            <label for="weight_st" class="form-label mb-0 fw-semibold" style="min-width:3em">ST面</label>
+                            <input type="range" class="form-range" id="weight_st" min="0" max="2" step="0.01"
+                                   value="{{ face_weights.ST }}">
+                            <span class="weight-value-badge bg-warning bg-opacity-10 text-warning" id="weight_st_val">0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-start gap-3 mt-3">
+                    <i class="bi bi-info-circle text-primary mt-1"></i>
+                    <small class="text-muted" id="explanation_detail">拖拽滑块调整权重值，系统会自动归一化并告知影响。</small>
+                </div>
+
+                <div id="weightsFeedback" class="d-none"></div>
+            </div>
+            <div class="settings-panel-footer">
+                <button id="save-weights-btn" class="btn btn-primary">
+                    <i class="bi bi-save me-1"></i>保存权重配置
+                </button>
+                <button id="reset-weights-btn" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>恢复默认经验值
+                </button>
+            </div>
+        </div>
+
+        <!-- ═══ 面板 3: 平衡机型号管理 ═══ -->
+        <div class="settings-panel" id="balancer-models">
+            <div class="settings-panel-header">
+                <h5><i class="bi bi-grid-3x3-gap me-2"></i>平衡机型号管理</h5>
+                    <div class="search-input-wrapper">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" class="form-control form-control-sm" id="modelSearchInput"
+                               placeholder="搜索型号..." class="form-control model-search">
+                    </div>
+                    <button id="btnAddModel" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i>新增型号
+                    </button>
+                </div>
+            <div class="settings-panel-body p-0">
+                <div class="table-responsive-wrapper">
+                    <table class="table table-hover mb-0 model-table" id="balancerModelsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>型号名称</th>
+                                <th>制造商</th>
+                                <th>最高转速</th>
+                                <th>最大半径</th>
+                                <th>状态</th>
+                                <th>更新时间</th>
+                                <th class="text-end">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for model in balancer_models %}
+                            <tr data-id="{{ model.id }}">
+                                <td><strong>{{ model.model_name }}</strong></td>
+                                <td>{{ model.manufacturer or '-' }}</td>
+                                <td>{{ model.max_speed or '-' }}</td>
+                                <td>{{ model.max_radius or '-' }}</td>
+                                <td>
+                                    {% if model.is_active %}
+                                    <span class="badge bg-success">启用</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">停用</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-muted small">{{ model.updated_at }}</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary me-1 btnEditModel" data-id="{{ model.id }}" title="编辑">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger btnDeleteModel" data-id="{{ model.id }}" data-name="{{ model.model_name }}" title="删除">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if not balancer_models %}
+                            <tr>
+                                <td colspan="7" class="text-center empty-row">
+                                    <i class="bi bi-inbox fs-3 d-block mb-2 opacity-50"></i>
+                                    暂无平衡机型号，点击"新增型号"添加
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+            </div><!-- /.col-lg-9 -->
+        </div><!-- /.row -->
+
+    </div><!-- /.container -->
+
+    <!-- 型号编辑 Modal -->
+    <div class="modal fade" id="modelModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modelModalTitle">编辑平衡机型号</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editModelId">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="modelName" class="form-label fw-semibold">型号名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="modelName" placeholder="例如: SN300" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="modelManufacturer" class="form-label fw-semibold">制造商</label>
+                            <input type="text" class="form-control" id="modelManufacturer" placeholder="例如: 申曼">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="modelMaxSpeed" class="form-label fw-semibold">最高转速 (RPM)</label>
+                            <input type="text" class="form-control" id="modelMaxSpeed" placeholder="例如: 10000">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="modelMaxRadius" class="form-label fw-semibold">最大半径 (mm)</label>
+                            <input type="text" class="form-control" id="modelMaxRadius" placeholder="例如: 500">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">启用状态</label>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="modelIsActive" checked>
+                                <label class="form-check-label" for="modelIsActive">启用</label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label for="modelDescription" class="form-label fw-semibold">备注</label>
+                            <textarea class="form-control" id="modelDescription" rows="2" placeholder="可选备注信息"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveModel">
+                        <i class="bi bi-check-lg me-1"></i>保存
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
-    <script>
-        $(document).ready(function() {
-            // 根据数据库类型显示/隐藏相应的表单字段
-            function updateFormFields() {
-                var dbType = $('#db_type').val();
-                
-                // 隐藏所有特定于数据库类型的字段
-                $('.db-type-specific').addClass('hidden');
-                
-                // 显示当前数据库类型的字段
-                if (dbType === 'mysql' || dbType === 'postgresql') {
-                    $('#' + dbType + '-specific').removeClass('hidden');
-                } else if (dbType === 'sqlite') {
-                    $('#sqlite-specific').removeClass('hidden');
-                }
-            }
-
-            // 初始加载时更新表单字段
-            updateFormFields();
-
-            // 当数据库类型改变时更新表单字段
-            $('#db_type').change(updateFormFields);
-
-            // 测试连接按钮点击事件
-            $('#test-connection-btn').click(function() {
-                var btn = $(this);
-                var originalText = btn.html();
-                
-                // 显示加载动画
-                btn.html('<i class="bi bi-hourglass-split"></i> 测试中... <span class="loading"></span>');
-                btn.attr('disabled', true);
-
-                // 获取表单数据
-                var formData = $('#db-config-form').serialize();
-
-                // 发送测试连接请求
-                $.ajax({
-                    url: '{{ url_for('settings.test_db_connection') }}',
-                    type: 'POST',
-                    data: formData,
-                    success: function(response) {
-                        // 显示测试结果
-                        if (response.success) {
-                            alert('连接测试成功！');
-                        } else {
-                            alert('连接测试失败：' + response.message);
-                        }
-                    },
-                    error: function() {
-                        alert('测试过程中出现错误，请稍后重试。');
-                    },
-                    complete: function() {
-                        // 恢复按钮状态
-                        btn.html(originalText);
-                        btn.attr('disabled', false);
-                    }
-                });
-            });
-        });
-    </script>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <script defer src="{{ url_for('static', filename='js/settings.js') }}"></script>
 </body>
 </html>

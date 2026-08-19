@@ -9,6 +9,8 @@ class ModalManager {
         this.modal = null;
         this.isFullscreen = false;
         this.currentChartSrc = null;
+        this.eventsBound = false;
+        this.boundHandlers = {};
         
         // DOM元素缓存
         this.elements = {};
@@ -57,6 +59,7 @@ class ModalManager {
         // 提取常用元素到实例属性
         this.fullscreenBtn = this.elements.fullscreenBtn;
         this.chartContainer = this.elements.chartContainer;
+        this.modalLabel = this.modal.querySelector('#chartModalLabel');
     }
     
     /**
@@ -64,22 +67,24 @@ class ModalManager {
      * @private
      */
     bindEventListeners() {
-        // 模态框显示前事件
-        this.modal.addEventListener('show.bs.modal', (event) => this.handleModalShow(event));
+        if (this.eventsBound) return;
+        this.eventsBound = true;
         
-        // 模态框完全显示后事件
-        this.modal.addEventListener('shown.bs.modal', () => this.handleModalShown());
+        this.boundHandlers.handleModalShow = (event) => this.handleModalShow(event);
+        this.boundHandlers.handleModalShown = () => this.handleModalShown();
+        this.boundHandlers.handleModalHide = () => this.handleModalHide();
+        this.boundHandlers.handleWindowResize = () => this.handleWindowResize();
+        this.boundHandlers.toggleFullscreen = () => this.toggleFullscreen();
         
-        // 模态框关闭时事件
-        this.modal.addEventListener('hide.bs.modal', () => this.handleModalHide());
+        this.modal.addEventListener('show.bs.modal', this.boundHandlers.handleModalShow);
+        this.modal.addEventListener('shown.bs.modal', this.boundHandlers.handleModalShown);
+        this.modal.addEventListener('hide.bs.modal', this.boundHandlers.handleModalHide);
         
-        // 全屏按钮点击事件
         if (this.fullscreenBtn) {
-            this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
+            this.fullscreenBtn.addEventListener('click', this.boundHandlers.toggleFullscreen);
         }
         
-        // 窗口大小变化事件
-        window.addEventListener('resize', () => this.handleWindowResize());
+        window.addEventListener('resize', this.boundHandlers.handleWindowResize);
     }
     
     /**
@@ -88,29 +93,90 @@ class ModalManager {
      * @param {Event} event - 模态框显示事件对象
      */
     handleModalShow(event) {
-        const button = event.relatedTarget;
-        if (!button) return;
+        let button = event.relatedTarget;
         
-        // 更新模态框标题
-        const modalTitle = this.modal.querySelector('.modal-title');
-        if (modalTitle) {
-            modalTitle.textContent = button.getAttribute('data-chart-title') || '图表详情';
+        if (!button) {
+            button = document.querySelector('.charts-container');
+            if (!button) return;
         }
         
-        // 准备图表容器
+        const chartSrc = button.getAttribute('data-chart-src');
+        const chartData = button.getAttribute('data-chart-data');
+        const chartType = button.getAttribute('data-chart-type');
+        
+        if (!chartSrc && !chartData) return;
+        
+        const chartTitle = button.getAttribute('data-chart-title') || '图表详情';
+        if (chartTitle) {
+            this.modalLabel.textContent = chartTitle;
+        }
+        
         this.prepareChartContainer();
         
-        // 获取图表HTML URL
-        this.currentChartSrc = button.getAttribute('data-chart-src');
-        if (!this.currentChartSrc) {
-            console.error('未找到图表源URL');
-            return;
+        if (chartData) {
+            this.currentChartSrc = null;
+            setTimeout(() => {
+                this.renderPlotlyChart(chartData, chartType);
+            }, 100);
+        } else {
+            this.currentChartSrc = chartSrc;
+            setTimeout(() => {
+                this.fetchAndRenderChart(this.currentChartSrc);
+            }, 100);
         }
+    }
+    
+    renderPlotlyChart(chartDataJson, chartType) {
+        if (!this.chartContainer) return;
         
-        // 延迟获取并渲染图表，确保模态框已经开始显示
-        setTimeout(() => {
-            this.fetchAndRenderChart(this.currentChartSrc);
-        }, 100);
+        try {
+            var cleaned = chartDataJson
+                .replace(/&#34;/g, '"')
+                .replace(/&quot;/g, '"')
+                .replace(/&amp;/g, '&');
+            var data = JSON.parse(cleaned);
+            
+            var plotlyData, plotlyLayout;
+            
+            if (chartType && typeof plotlyManager !== 'undefined' && typeof plotlyManager.createPlotlyData === 'function') {
+                plotlyData = plotlyManager.createPlotlyData(chartType, data, {});
+                plotlyLayout = plotlyManager.createPlotlyLayout(chartType, { title: '', yAxisLabel: '不平衡量' });
+            } else {
+                plotlyData = data;
+                plotlyLayout = {};
+            }
+            
+            this.chartContainer.innerHTML = '';
+            this.chartContainer.style.height = '';
+            this.chartContainer.style.width = '';
+            this.chartContainer.style.minHeight = '600px';
+            this.chartContainer.style.display = 'flex';
+            
+            var innerDiv = document.createElement('div');
+            innerDiv.id = 'modal-plotly-chart-' + Date.now();
+            innerDiv.style.width = '100%';
+            innerDiv.style.height = '100%';
+            innerDiv.style.minHeight = '600px';
+            this.chartContainer.appendChild(innerDiv);
+            
+            Plotly.newPlot(innerDiv, plotlyData, plotlyLayout, {
+                responsive: true,
+                scrollZoom: true,
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['toImage', 'sendDataToCloud']
+            });
+            
+            setTimeout(function() {
+                try {
+                    Plotly.Plots.resize(innerDiv);
+                } catch (e) {}
+            }, 300);
+
+        } catch (error) {
+            console.error('ModalManager: 渲染Plotly图表时出错:', error);
+            this.chartContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--danger-color, #dc2626);">图表渲染失败：' + this._escapeHtml(error.message) + '</div>';
+        }
     }
     
     /**
@@ -118,12 +184,8 @@ class ModalManager {
      * @private
      */
     handleModalShown() {
-        console.log('模态框完全显示');
         
-        // 确保图表容器样式正确
         this.ensureContainerStyles();
-        
-        // 调整图表大小
         this.resizeChart();
     }
     
@@ -132,13 +194,9 @@ class ModalManager {
      * @private
      */
     handleModalHide() {
-        // 重置全屏状态
         this.resetFullscreen();
-        
-        // 释放资源，清理图表
+        document.body.style.overflow = '';
         this.cleanupChart();
-        
-        // 重置当前图表源
         this.currentChartSrc = null;
     }
     
@@ -164,11 +222,17 @@ class ModalManager {
         if (!this.chartContainer) return;
         
         try {
-            // 清空图表容器
+            const plotElements = this.chartContainer.querySelectorAll('.js-plotly-plot, .plotly-graph-div, .plotly-chart');
+            plotElements.forEach(el => {
+                try {
+                    if (typeof Plotly !== 'undefined' && el.id) {
+                        Plotly.purge(el.id);
+                    }
+                } catch (e) {}
+            });
             this.chartContainer.innerHTML = '';
         } catch (error) {
             console.error('销毁图表实例时出错:', error);
-            // 确保容器被清空
             this.chartContainer.innerHTML = '';
         }
     }
@@ -181,15 +245,7 @@ class ModalManager {
     fetchAndRenderChart(chartUrl) {
         if (!this.chartContainer) return;
         
-        // 添加加载状态
-        this.chartContainer.innerHTML = `
-            <div style="padding: 20px; text-align: center;">
-                <div class="spinner-border" role="status">
-                    <span class="visually-hidden">加载中...</span>
-                </div>
-                <br>正在加载图表...
-            </div>
-        `;
+        this.chartContainer.innerHTML = '<div class="d-flex justify-content-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
         
         // 发送GET请求获取图表HTML内容
         fetch(chartUrl)
@@ -205,12 +261,11 @@ class ModalManager {
             })
             .catch(error => {
                 console.error('获取图表数据时出错:', error);
-                // 显示详细的错误信息
                 this.chartContainer.innerHTML = `
                     <div style="padding: 20px; text-align: center; color: red;">
                         <h6 class="text-danger mb-2">图表加载失败</h6>
-                        <p class="mb-3">错误信息：${error.message}</p>
-                        <p class="text-muted" style="font-size: 0.9rem;">请求URL：${chartUrl}</p>
+                        <p class="mb-3">错误信息：${this._escapeHtml(error.message)}</p>
+                        <p class="text-muted" style="font-size: 0.9rem;">请求URL：${this._escapeHtml(chartUrl)}</p>
                         <button class="btn btn-sm btn-primary mt-2" onclick="location.reload()">
                             <i class="bi bi-arrow-clockwise me-1"></i>刷新页面重试
                         </button>
@@ -237,12 +292,24 @@ class ModalManager {
             // 确保容器样式正确
             this.ensureContainerStyles();
             
+            // 移除 body 样式规则，防止污染页面
+            const styleEl = this.chartContainer.querySelector('style');
+            if (styleEl) {
+                styleEl.textContent = styleEl.textContent.replace(/body\s*\{[^}]*\}/g, '');
+            }
+            
             // 查找所有脚本元素
             const scripts = this.chartContainer.querySelectorAll('script');
             
             // 重新执行所有脚本，确保图表能正确初始化
             scripts.forEach(script => {
                 try {
+                    // 跳过 Plotly 外部脚本（页面已加载）
+                    if (script.src && script.src.includes('plotly')) {
+                        script.remove();
+                        return;
+                    }
+                    
                     // 创建新的脚本元素
                     const newScript = document.createElement('script');
                     
@@ -260,12 +327,27 @@ class ModalManager {
                 }
             });
             
-            // 延迟调整图表大小，确保图表已渲染完成
+            // 主动调用 renderChart：图表HTML使用 window.onload = renderChart，
+            // 但HTML通过innerHTML插入modal时window已加载完毕，onload不会触发
             setTimeout(() => {
-                this.initialResizeChart();
-            }, 500);
+                var plotEls = this.chartContainer.querySelectorAll('.js-plotly-plot');
+                if (plotEls.length === 0 && typeof renderChart === 'function') {
+                    try {
+                        renderChart();
+                    } catch (e) {
+                        console.error('ModalManager: renderChart执行失败:', e);
+                    }
+                }
+            }, 80);
             
-            console.log('图表已渲染');
+            setTimeout(() => {
+                this.resizeChart();
+            }, 300);
+            
+            setTimeout(() => {
+                this.resizeChart();
+            }, 800);
+            
         } catch (error) {
             console.error('处理图表HTML时出错:', error);
             // 显示友好的错误信息
@@ -281,17 +363,8 @@ class ModalManager {
      * 图表首次加载时调整大小
      * @private
      */
-    initialResizeChart() {
-        if (!this.chartContainer) return;
-        
-        try {
-            // 首先确保所有容器样式正确
-            this.ensureContainerStyles();
-            
-
-        } catch (e) {
-            console.error('首次调整图表大小时出错:', e);
-        }
+    resizePlotlyCharts() {
+        this.resizeChart();
     }
     
     /**
@@ -359,7 +432,7 @@ class ModalManager {
             this.chartContainer.style.minHeight = '600px';
             
             // 确保内部的图表div也能正确显示
-            const chartDivs = this.chartContainer.querySelectorAll('.chart-container, .plotly-container, .echarts-container');
+            const chartDivs = this.chartContainer.querySelectorAll('.chart-container, .plotly-container');
             chartDivs.forEach(div => {
                 div.style.height = '100%';
                 div.style.width = '100%';
@@ -376,28 +449,31 @@ class ModalManager {
         if (!this.chartContainer) return;
         
         try {
-            // 首先确保所有容器样式正确
             this.ensureContainerStyles();
             
-            // 查找所有图表元素并调整大小
-            try {
-                if (typeof Plotly !== 'undefined') {
-                    // 调整所有Plotly图表大小
-                    const chartElements = this.chartContainer.querySelectorAll('[id]');
-                    chartElements.forEach(element => {
+            if (typeof Plotly !== 'undefined') {
+                const chartElements = this.chartContainer.querySelectorAll('.js-plotly-plot, .plotly-graph-div, .plotly-chart');
+                chartElements.forEach(el => {
+                    try {
+                        Plotly.Plots.resize(el);
+                    } catch (e1) {
                         try {
-                            Plotly.relayout(element.id, {
-                                width: element.clientWidth,
-                                height: element.clientHeight
-                            });
-                        } catch (e) {
-                            // 忽略不是Plotly图表的元素
+                            if (el.id) {
+                                Plotly.relayout(el.id, {
+                                    width: el.clientWidth,
+                                    height: el.clientHeight
+                                });
+                            }
+                        } catch (e2) {
                         }
-                    });
-                    console.log('图表大小已调整');
+                    }
+                });
+                if (chartElements.length === 0 && this.chartContainer) {
+                    try {
+                        Plotly.Plots.resize(this.chartContainer);
+                    } catch (e3) {
+                    }
                 }
-            } catch (error) {
-                console.warn('调整图表大小时出错:', error.message);
             }
         } catch (e) {
             console.error('调整图表大小时出错:', e);
@@ -413,24 +489,15 @@ class ModalManager {
         this.updateFullscreenClass();
         this.updateFullscreenButton();
         
-        // 确保容器样式正确
-        this.ensureContainerStyles();
+        document.body.style.overflow = this.isFullscreen ? 'hidden' : '';
         
-        // 调整图表大小以适应新的全屏状态
+        this.ensureContainerStyles();
         this.resizeChart();
         
-        // 延迟一小段时间后，再次调整图表大小以确保正确显示
-        // 这是因为模态框的CSS类变化可能需要时间才能完全应用
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             this.ensureContainerStyles();
             this.resizeChart();
-        }, 100);
-        
-        // 再延迟更长时间，确保所有样式都已应用
-        setTimeout(() => {
-            this.ensureContainerStyles();
-            this.resizeChart();
-        }, 300);
+        });
     }
     
     /**
@@ -484,11 +551,15 @@ class ModalManager {
      * @private
      */
     handleWindowResize() {
-        // 确保图表容器样式正确
-        this.ensureContainerStyles();
-        
-        // 调整图表大小
-        this.resizeChart();
+        if (!this.modal) return;
+        if (this._resizeDebounceTimer) {
+            clearTimeout(this._resizeDebounceTimer);
+        }
+        this._resizeDebounceTimer = setTimeout(() => {
+            if (!this.modal) return;
+            this.ensureContainerStyles();
+            this.resizeChart();
+        }, 200);
     }
     
     /**
@@ -496,17 +567,37 @@ class ModalManager {
      * @public
      */
     destroy() {
-        // 移除事件监听器
-        window.removeEventListener('resize', () => this.handleWindowResize());
+        if (this.eventsBound) {
+            this.modal.removeEventListener('show.bs.modal', this.boundHandlers.handleModalShow);
+            this.modal.removeEventListener('shown.bs.modal', this.boundHandlers.handleModalShown);
+            this.modal.removeEventListener('hide.bs.modal', this.boundHandlers.handleModalHide);
+            if (this.fullscreenBtn) {
+                this.fullscreenBtn.removeEventListener('click', this.boundHandlers.toggleFullscreen);
+            }
+            window.removeEventListener('resize', this.boundHandlers.handleWindowResize);
+            this.eventsBound = false;
+        }
         
-        // 清理图表资源
         this.cleanupChart();
+        this.resetFullscreen();
         
-        // 重置所有属性
+        if (this._resizeDebounceTimer) {
+            clearTimeout(this._resizeDebounceTimer);
+            this._resizeDebounceTimer = null;
+        }
+        
         this.modal = null;
         this.chartContainer = null;
         this.fullscreenBtn = null;
         this.elements = {};
+        this.boundHandlers = {};
+    }
+
+    _escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = String(text);
+        return div.innerHTML;
     }
 }
 

@@ -5,22 +5,22 @@
 
 .progress {
     height: 20px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
 }
 
 .progress-bar {
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     font-size: 0.8rem;
-    font-family: "Segoe UI", "Microsoft YaHei", "SimHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-stack);
 }
 
 .file-size {
     font-size: 0.8rem;
-    font-family: "Segoe UI", "Microsoft YaHei", "SimHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-stack);
 }
 
 /* 拖拽上传样式 */
 .upload-area.drag-over {
-    border-color: #0d6efd;
-    background-color: #e7f1ff;
+    border-color: var(--primary-color);
+    background-color: rgba(var(--primary-rgb), 0.05);
 }

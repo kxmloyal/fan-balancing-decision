@@ -4,301 +4,214 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>机器学习 - 扇叶平衡补土转速评估工具</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='libs/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='libs/bootstrap-icons/bootstrap-icons.css') }}">
-    <script src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header h1 {
-            color: #007bff;
-            margin-bottom: 10px;
-        }
-        .header p {
-            color: #6c757d;
-            font-size: 1.1rem;
-        }
-        .ml-section {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .ml-section h2 {
-            color: #007bff;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 10px;
-        }
-        .ml-section p {
-            margin-bottom: 15px;
-            line-height: 1.6;
-        }
-        .btn {
-            margin-right: 10px;
-            margin-bottom: 10px;
-        }
-        .alert {
-            margin-top: 20px;
-        }
-        .card {
-            margin-bottom: 20px;
-        }
-        .card-header {
-            background-color: #007bff;
-            color: white;
-            font-weight: bold;
-        }
-        .card-body {
-            background-color: white;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            font-weight: 600;
-            margin-bottom: 5px;
-            display: block;
-        }
-        .form-control {
-            border-radius: 4px;
-        }
-        .code-block {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            padding: 15px;
-            margin: 15px 0;
-            font-family: 'Courier New', Courier, monospace;
-            white-space: pre-wrap;
-        }
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-left: 10px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ml.css') }}">
+
 </head>
 <body>
     {% import 'macros/navbar.html' as navbar_macros %}
     {{ navbar_macros.render_navbar(active_page='ml') }}
 
     <div class="container">
-        <div class="header">
-            <h1><i class="bi bi-brain"></i> 机器学习分析</h1>
-            <p>使用机器学习算法对设备运行数据进行分析和预测</p>
+        <div class="ml-hero">
+            <h1><i class="bi bi-cpu"></i> 机器学习分析工具</h1>
+            <p>趋势预测 · 关键指标预测 · 多维度分析 · 异常模式检测 — 四合一交互式 ML 工作台</p>
         </div>
 
-        <!-- 消息提示 -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}" role="alert">
-                        {{ message }}
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <div class="ml-section">
-            <h2>功能说明</h2>
-            <p>本页面提供了多种机器学习功能，可用于分析设备运行数据、预测趋势和检测异常模式。</p>
-            <div class="card">
-                <div class="card-header">
-                    可用的机器学习功能
-                </div>
-                <div class="card-body">
-                    <ul class="list-group">
-                        <li class="list-group-item">
-                            <strong>趋势预测</strong> - 基于历史数据预测未来趋势
-                        </li>
-                        <li class="list-group-item">
-                            <strong>关键指标预测</strong> - 预测设备的关键运行指标
-                        </li>
-                        <li class="list-group-item">
-                            <strong>多维度分析</strong> - 对数据进行多维度分析
-                        </li>
-                        <li class="list-group-item">
-                            <strong>异常模式检测</strong> - 检测时间序列数据中的异常模式
-                        </li>
-                    </ul>
-                </div>
-            </div>
+        <div class="ml-toolbar" role="tablist">
+            <button class="nav-link active" data-ml-tab="tab-trend" role="tab">
+                <i class="bi bi-graph-up"></i> 趋势预测
+            </button>
+            <button class="nav-link" data-ml-tab="tab-metrics" role="tab">
+                <i class="bi bi-bar-chart-line"></i> 关键指标预测
+            </button>
+            <button class="nav-link" data-ml-tab="tab-multi" role="tab">
+                <i class="bi bi-grid-3x3-gap"></i> 多维度分析
+            </button>
+            <button class="nav-link" data-ml-tab="tab-anomaly" role="tab">
+                <i class="bi bi-exclamation-triangle"></i> 异常模式检测
+            </button>
         </div>
 
-        <div class="ml-section">
-            <h2>API接口</h2>
-            <p>本系统提供了以下RESTful API接口，可用于集成到其他系统中：</p>
-            <div class="card">
-                <div class="card-header">
-                    趋势预测 API
+        <!-- 数据源栏：型号选择 + 端面选择 + 文件上传（数据库未连接时自动隐藏） -->
+        <div id="ml-datasource" class="ml-datasource" style="display:none;">
+            <div class="ml-datasource-row">
+                <div class="ml-datasource-selects">
+                    <label class="ml-ds-label"><i class="bi bi-box"></i> 型号</label>
+                    <select id="ml-model-select" class="ml-ds-select">
+                        <option value="">-- 选择历史型号 --</option>
+                    </select>
+                    <span id="ml-ds-spinner" class="ml-ds-spinner" style="display:none;"></span>
                 </div>
-                <div class="card-body">
-                    <p><strong>URL:</strong> /api/predict_trend</p>
-                    <p><strong>方法:</strong> POST</p>
-                    <p><strong>参数:</strong></p>
-                    <div class="code-block">
-{
-  "historical_data": [10, 12, 14, 15, 18, 20, 22],
-  "prediction_days": 7,
-  "model_type": "random_forest"
-}
+                <div class="ml-datasource-selects" id="ml-face-select-group" style="display:none;">
+                    <label class="ml-ds-label"><i class="bi bi-geo-alt"></i> 端面</label>
+                    <select id="ml-face-select" class="ml-ds-select">
+                        <option value="P1">P1 面</option>
+                        <option value="P2">P2 面</option>
+                        <option value="ST">ST 面</option>
+                    </select>
+                </div>
+                <div class="ml-datasource-actions">
+                    <button id="ml-refresh-models" class="btn btn-sm btn-outline-secondary" title="刷新型号列表">
+                        <i class="bi bi-arrow-repeat"></i> 刷新
+                    </button>
+                    <label class="btn btn-sm btn-outline-secondary mb-0" title="上传 JSON/CSV 文件">
+                        <i class="bi bi-upload"></i> 文件
+                        <input type="file" id="ml-file-input" accept=".json,.csv" style="display:none;">
+                    </label>
+                </div>
+            </div>
+            <div id="ml-ds-summary" class="ml-ds-summary" style="display:none;"></div>
+        </div>
+
+        <div id="ml-error" class="ml-error-banner"></div>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div id="tab-trend" class="ml-panel ml-tab-panel">
+            <h3><i class="bi bi-graph-up"></i> 趋势预测</h3>
+            <p class="text-muted small">基于历史时间序列数据，使用多种回归模型预测未来趋势。支持线性回归、岭回归、随机森林和梯度提升四种算法。</p>
+            <div class="ml-input-row">
+                <div>
+                    <label class="form-label fw-bold small">历史数据 (JSON)</label>
+                    <textarea id="trend-input" class="ml-json-area" placeholder='[{"date":"2025-01-01","value":10},...]'></textarea>
+                </div>
+                <div class="ml-params">
+                    <div class="ml-param-group">
+                        <label>预测天数</label>
+                        <input type="number" id="trend-days" value="7" min="1" max="365">
                     </div>
-                    <p><strong>返回:</strong></p>
-                    <div class="code-block">
-{
-  "success": true,
-  "result": {
-    "predictions": [23, 24, 25, 26, 27, 28, 29],
-    "model_accuracy": 0.95
-  }
-}
+                    <div class="ml-param-group">
+                        <label>模型类型</label>
+                        <select id="trend-model">
+                            <option value="random_forest">随机森林 (Random Forest)</option>
+                            <option value="gradient_boosting">梯度提升 (Gradient Boosting)</option>
+                            <option value="linear">线性回归 (Linear)</option>
+                            <option value="ridge">岭回归 (Ridge)</option>
+                        </select>
+                    </div>
+                    <div class="ml-actions">
+                        <button class="btn btn-sm btn-outline-secondary" data-sample="trend"><i class="bi bi-lightbulb"></i> 填充示例</button>
+                        <button class="btn btn-sm btn-primary" data-run="trend"><i class="bi bi-play-fill"></i> 开始分析</button>
+                        <button class="btn btn-sm btn-outline-danger" data-clear="trend"><i class="bi bi-x"></i> 清空</button>
                     </div>
                 </div>
             </div>
-
-            <div class="card">
-                <div class="card-header">
-                    关键指标预测 API
-                </div>
-                <div class="card-body">
-                    <p><strong>URL:</strong> /api/predict_key_metrics</p>
-                    <p><strong>方法:</strong> POST</p>
-                    <p><strong>参数:</strong></p>
-                    <div class="code-block">
-{
-  "historical_metrics": [100, 105, 110, 115, 120, 125],
-  "prediction_periods": 6,
-  "model_type": "gradient_boosting"
-}
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    多维度分析 API
-                </div>
-                <div class="card-body">
-                    <p><strong>URL:</strong> /api/multi_dimensional_analysis</p>
-                    <p><strong>方法:</strong> POST</p>
-                    <p><strong>参数:</strong></p>
-                    <div class="code-block">
-{
-  "data": [
-    {"speed": 1000, "vibration": 0.5, "temperature": 30},
-    {"speed": 1500, "vibration": 0.8, "temperature": 35},
-    {"speed": 2000, "vibration": 1.2, "temperature": 40}
-  ],
-  "dimensions": ["speed"],
-  "metrics": ["vibration", "temperature"]
-}
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    异常模式检测 API
-                </div>
-                <div class="card-body">
-                    <p><strong>URL:</strong> /api/detect_anomaly_patterns</p>
-                    <p><strong>方法:</strong> POST</p>
-                    <p><strong>参数:</strong></p>
-                    <div class="code-block">
-{
-  "time_series_data": [10, 12, 14, 15, 18, 50, 22],
-  "window_size": 7,
-  "threshold": 2.0
-}
-                    </div>
-                </div>
+            <div class="ml-loading-overlay" id="trend-loading"><div class="ml-spinner"></div>正在训练模型...</div>
+            <div class="ml-result" id="trend-result">
+                <div class="ml-stats-grid" id="trend-stats"></div>
+                <div class="ml-chart-container" id="trend-chart"></div>
             </div>
         </div>
 
-        <div class="ml-section">
-            <h2>使用示例</h2>
-            <p>以下是如何使用机器学习API的示例代码：</p>
-            <div class="card">
-                <div class="card-header">
-                    Python 示例
+        <div id="tab-metrics" class="ml-panel ml-tab-panel" style="display:none;">
+            <h3><i class="bi bi-bar-chart-line"></i> 关键指标预测</h3>
+            <p class="text-muted small">对多个关键指标的并行预测。每个指标独立训练模型，支持多步滚动预测。</p>
+            <div class="ml-input-row">
+                <div>
+                    <label class="form-label fw-bold small">历史指标数据 (JSON)</label>
+                    <textarea id="metrics-input" class="ml-json-area" placeholder='[{"date":"2025-01-01","metric_a":100,"metric_b":50},...]'></textarea>
                 </div>
-                <div class="card-body">
-                    <div class="code-block">
-import requests
-import json
-
-# 预测趋势
-url = "http://localhost:1322/api/predict_trend"
-data = {
-    "historical_data": [10, 12, 14, 15, 18, 20, 22],
-    "prediction_days": 7,
-    "model_type": "random_forest"
-}
-
-response = requests.post(url, json=data)
-print(response.json())
+                <div class="ml-params">
+                    <div class="ml-param-group">
+                        <label>预测周期数</label>
+                        <input type="number" id="metrics-periods" value="6" min="1" max="120">
+                    </div>
+                    <div class="ml-param-group">
+                        <label>模型类型</label>
+                        <select id="metrics-model">
+                            <option value="gradient_boosting">梯度提升 (Gradient Boosting)</option>
+                            <option value="random_forest">随机森林 (Random Forest)</option>
+                            <option value="linear">线性回归 (Linear)</option>
+                            <option value="ridge">岭回归 (Ridge)</option>
+                        </select>
+                    </div>
+                    <div class="ml-actions">
+                        <button class="btn btn-sm btn-outline-secondary" data-sample="metrics"><i class="bi bi-lightbulb"></i> 填充示例</button>
+                        <button class="btn btn-sm btn-primary" data-run="metrics"><i class="bi bi-play-fill"></i> 开始分析</button>
+                        <button class="btn btn-sm btn-outline-danger" data-clear="metrics"><i class="bi bi-x"></i> 清空</button>
                     </div>
                 </div>
             </div>
+            <div class="ml-loading-overlay" id="metrics-loading"><div class="ml-spinner"></div>正在训练多指标模型...</div>
+            <div class="ml-result" id="metrics-result">
+                <div class="ml-stats-grid" id="metrics-stats"></div>
+                <div class="ml-chart-container" id="metrics-chart"></div>
+            </div>
+        </div>
 
-            <div class="card">
-                <div class="card-header">
-                    JavaScript 示例
+        <div id="tab-multi" class="ml-panel ml-tab-panel" style="display:none;">
+            <h3><i class="bi bi-grid-3x3-gap"></i> 多维度分析</h3>
+            <p class="text-muted small">对表格数据进行多维度分组统计分析。选择维度列和指标列，输出全局汇总与分组统计。</p>
+            <div class="ml-input-row">
+                <div>
+                    <label class="form-label fw-bold small">分析数据 (JSON)</label>
+                    <textarea id="multi-input" class="ml-json-area" placeholder='[{"speed":"800rpm","vibration":0.5,"temp":30},...]'></textarea>
                 </div>
-                <div class="card-body">
-                    <div class="code-block">
-// 预测趋势
-fetch('/api/predict_trend', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-        historical_data: [10, 12, 14, 15, 18, 20, 22],
-        prediction_days: 7,
-        model_type: 'random_forest'
-    })
-})
-.then(response => response.json())
-.then(data => console.log(data));
+                <div class="ml-params">
+                    <div class="ml-param-group">
+                        <label>分析维度（逗号分隔）</label>
+                        <input type="text" id="multi-dimensions" value="speed" placeholder="speed, category">
                     </div>
+                    <div class="ml-param-group">
+                        <label>分析指标（逗号分隔）</label>
+                        <input type="text" id="multi-metrics" value="vibration, temp" placeholder="vibration, temp">
+                    </div>
+                    <div class="ml-actions">
+                        <button class="btn btn-sm btn-outline-secondary" data-sample="multi"><i class="bi bi-lightbulb"></i> 填充示例</button>
+                        <button class="btn btn-sm btn-primary" data-run="multi"><i class="bi bi-play-fill"></i> 开始分析</button>
+                        <button class="btn btn-sm btn-outline-danger" data-clear="multi"><i class="bi bi-x"></i> 清空</button>
+                    </div>
+                </div>
+            </div>
+            <div class="ml-loading-overlay" id="multi-loading"><div class="ml-spinner"></div>正在计算统计量...</div>
+            <div class="ml-result" id="multi-result">
+                <div class="ml-stats-grid" id="multi-stats"></div>
+                <div style="overflow-x:auto;">
+                    <table class="ml-summary-table table table-sm" id="multi-table"></table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-anomaly" class="ml-panel ml-tab-panel" style="display:none;">
+            <h3><i class="bi bi-exclamation-triangle"></i> 异常模式检测</h3>
+            <p class="text-muted small">基于滑动窗口 Z-score 方法检测时间序列中的异常点。窗口越大检测越稳定，阈值越低越敏感。</p>
+            <div class="ml-input-row">
+                <div>
+                    <label class="form-label fw-bold small">时间序列数据 (JSON)</label>
+                    <textarea id="anomaly-input" class="ml-json-area" placeholder='[{"date":"2025-01-01","value":10},...]'></textarea>
+                </div>
+                <div class="ml-params">
+                    <div class="ml-param-group">
+                        <label>滑动窗口大小</label>
+                        <input type="number" id="anomaly-window" value="7" min="2" max="100">
+                    </div>
+                    <div class="ml-param-group">
+                        <label>Z-score 阈值</label>
+                        <input type="number" id="anomaly-threshold" value="2.0" min="0.5" max="5.0" step="0.1">
+                    </div>
+                    <div class="ml-actions">
+                        <button class="btn btn-sm btn-outline-secondary" data-sample="anomaly"><i class="bi bi-lightbulb"></i> 填充示例</button>
+                        <button class="btn btn-sm btn-primary" data-run="anomaly"><i class="bi bi-play-fill"></i> 开始检测</button>
+                        <button class="btn btn-sm btn-outline-danger" data-clear="anomaly"><i class="bi bi-x"></i> 清空</button>
+                    </div>
+                </div>
+            </div>
+            <div class="ml-loading-overlay" id="anomaly-loading"><div class="ml-spinner"></div>正在扫描异常点...</div>
+            <div class="ml-result" id="anomaly-result">
+                <div class="ml-stats-grid" id="anomaly-stats"></div>
+                <div class="ml-chart-container" id="anomaly-chart"></div>
+                <div style="overflow-x:auto;">
+                    <table class="ml-summary-table table table-sm" id="anomaly-table"></table>
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-        $(document).ready(function() {
-            // 初始化页面
-            console.log('机器学习页面加载完成');
-        });
-    </script>
+    <script defer src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='libs/plotly/plotly.min.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/safe-fetch.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/ml.js') }}"></script>
 </body>
 </html>

@@ -4,22 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>数据仪表盘 - 扇叶平衡补土转速评估工具</title>
-    <!-- 使用本地资源加载Bootstrap和相关库 -->
     <link href="{{ url_for('static', filename='libs/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='libs/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/upload.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/dashboard.css') }}" rel="stylesheet">
 </head>
 <body>
-    <!-- 导航栏 -->
     {% import 'macros/navbar.html' as navbar_macros %}
-    {% import 'macros/chart_macros.html' as chart_macros %}
     {{ navbar_macros.render_navbar(active_page='dashboard') }}
-    
+
     <div class="container mt-4 mb-5">
-        <h1 class="text-center mb-5 text-primary animate-fade-in-up"><i class="bi bi-speedometer2 me-2"></i>数据仪表盘</h1>
-        
-        <!-- 消息提示区域 -->
+        <div class="dashboard-hero">
+            <h1 class="text-primary"><i class="bi bi-clipboard-data me-2"></i>数据仪表盘</h1>
+            <p class="hero-subtitle">平衡补土工艺评估总览 — 跟踪评估趋势、最优转速分布与型号覆盖</p>
+        </div>
+
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
@@ -30,273 +29,144 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
-        <!-- 仪表盘概览 -->
-        <div class="row g-4 mb-6 scroll-reveal">
-            <!-- 总评估次数 -->
-            <div class="col-md-3">
-                <div class="card shadow-lg bg-gradient bg-primary text-white h-100 animate-fade-in-up" style="animation-delay: 0.1s;">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h5 class="card-title">总评估次数</h5>
-                                <p class="card-text display-4">{{ total_evaluations }}</p>
-                            </div>
-                            <div class="bg-white bg-opacity-20 p-3 rounded-full">
-                                <i class="bi bi-activity fs-1"></i>
-                            </div>
-                        </div>
-                    </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-xl-3">
+                <div class="kpi-card kpi-primary animate-fade-in-up" style="animation-delay:0.05s">
+                    <div class="kpi-label">累计评估次数</div>
+                    <div class="kpi-value">{{ total_evaluations }}</div>
+                    <div class="kpi-sub">最近: {{ latest_evaluation }}</div>
+                    <div class="kpi-icon"><i class="bi bi-bar-chart-fill"></i></div>
                 </div>
             </div>
-            
-            <!-- 最优转速统计 -->
-            <div class="col-md-3">
-                <div class="card shadow-lg bg-gradient bg-secondary text-white h-100 animate-fade-in-up" style="animation-delay: 0.2s;">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h5 class="card-title">最优转速</h5>
-                                <p class="card-text display-4">{{ optimal_speed }}</p>
-                            </div>
-                            <div class="bg-white bg-opacity-20 p-3 rounded-full">
-                                <i class="bi bi-trophy fs-1"></i>
-                            </div>
-                        </div>
-                    </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="kpi-card kpi-success animate-fade-in-up" style="animation-delay:0.1s">
+                    <div class="kpi-label">最常见最优转速</div>
+                    <div class="kpi-value">{{ optimal_speed }}</div>
+                    <div class="kpi-sub">转速推荐稳定性 {{ speed_stability }}%</div>
+                    <div class="kpi-icon"><i class="bi bi-trophy"></i></div>
                 </div>
             </div>
-            
-            <!-- 数据文件数 -->
-            <div class="col-md-3">
-                <div class="card shadow-lg bg-gradient bg-info text-white h-100 animate-fade-in-up" style="animation-delay: 0.3s;">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h5 class="card-title">数据文件数</h5>
-                                <p class="card-text display-4">{{ file_count }}</p>
-                            </div>
-                            <div class="bg-white bg-opacity-20 p-3 rounded-full">
-                                <i class="bi bi-file-earmark-spreadsheet fs-1"></i>
-                            </div>
-                        </div>
-                    </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="kpi-card kpi-warning animate-fade-in-up" style="animation-delay:0.15s">
+                    <div class="kpi-label">已评估型号数</div>
+                    <div class="kpi-value">{{ model_count }}</div>
+                    <div class="kpi-sub">覆盖多种扇叶型号</div>
+                    <div class="kpi-icon"><i class="bi bi-collection"></i></div>
                 </div>
             </div>
-            
-            <!-- 存储空间使用 -->
-            <div class="col-md-3">
-                <div class="card shadow-lg bg-gradient bg-warning text-white h-100 animate-fade-in-up" style="animation-delay: 0.4s;">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h5 class="card-title">存储空间</h5>
-                                <p class="card-text display-4">{{ storage_usage }} MB</p>
-                            </div>
-                            <div class="bg-white bg-opacity-20 p-3 rounded-full">
-                                <i class="bi bi-hdd-network fs-1"></i>
-                            </div>
-                        </div>
-                    </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="kpi-card kpi-info animate-fade-in-up" style="animation-delay:0.2s">
+                    <div class="kpi-label">转速推荐稳定性</div>
+                    <div class="kpi-value">{{ speed_stability }}%</div>
+                    <div class="kpi-sub">Top1 最优转速占比</div>
+                    <div class="kpi-icon"><i class="bi bi-graph-up-arrow"></i></div>
                 </div>
             </div>
         </div>
-        
-        <!-- 图表区域 -->
-        <div class="row g-4 mb-6 scroll-reveal">
-            <!-- 评估趋势图 -->
-            <div class="col-md-6">
-                <div class="card shadow-lg animate-fade-in-up" style="animation-delay: 0.5s;">
-                    <div class="card-header bg-gradient bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="bi bi-trend-up me-2"></i>评估趋势</h5>
-                        <button class="btn btn-sm btn-white bg-opacity-20 text-white" data-realtime-update="start" data-chart-container="evaluationTrendChart">
-                            <i class="bi bi-arrow-repeat me-1"></i>开始实时更新
+
+        <div class="row g-3 mb-4">
+            <div class="col-lg-8">
+                <div class="chart-panel animate-fade-in-up" style="animation-delay:0.25s">
+                    <div class="chart-header">
+                        <h5><i class="bi bi-graph-up me-2 text-primary"></i>7日评估趋势</h5>
+                        <button class="btn btn-sm btn-outline-primary" id="refreshTrendChart">
+                            <i class="bi bi-arrow-repeat me-1"></i>刷新
                         </button>
                     </div>
-                    <div class="card-body">
-                        <div id="evaluationTrendChart" class="plotly-chart" style="height: 300px;"></div>
-                    </div>
+                    <div id="trendChart" class="chart-container"></div>
                 </div>
             </div>
-            
-            <!-- 转速分布 -->
-            <div class="col-md-6">
-                <div class="card shadow-lg animate-fade-in-up" style="animation-delay: 0.6s;">
-                    <div class="card-header bg-gradient bg-secondary text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>转速分布</h5>
-                        <button class="btn btn-sm btn-white bg-opacity-20 text-white" data-realtime-update="start" data-chart-container="speedDistributionChart">
-                            <i class="bi bi-arrow-repeat me-1"></i>开始实时更新
+            <div class="col-lg-4">
+                <div class="chart-panel animate-fade-in-up" style="animation-delay:0.3s">
+                    <div class="chart-header">
+                        <h5><i class="bi bi-pie-chart me-2 text-primary"></i>型号分布</h5>
+                        <button class="btn btn-sm btn-outline-primary" id="refreshModelChart">
+                            <i class="bi bi-arrow-repeat me-1"></i>刷新
                         </button>
                     </div>
-                    <div class="card-body">
-                        <div id="speedDistributionChart" class="plotly-chart" style="height: 300px;"></div>
-                    </div>
+                    <div id="modelChart" class="chart-container"></div>
                 </div>
             </div>
         </div>
-        
-        <!-- 最近评估记录 -->
-        <div class="card shadow-lg mb-6 scroll-reveal animate-fade-in-up" style="animation-delay: 0.7s;">
-            <div class="card-header bg-gradient bg-info text-white">
-                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>最近评估记录</h5>
+
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <div class="chart-panel animate-fade-in-up" style="animation-delay:0.35s">
+                    <div class="chart-header">
+                        <h5><i class="bi bi-speedometer2 me-2 text-primary"></i>最优转速分布</h5>
+                        <button class="btn btn-sm btn-outline-primary" id="refreshSpeedChart">
+                            <i class="bi bi-arrow-repeat me-1"></i>刷新
+                        </button>
+                    </div>
+                    <div id="speedChart" class="chart-container" style="min-height:300px"></div>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+        </div>
+
+        <div class="records-panel animate-fade-in-up" style="animation-delay:0.4s">
+            <div class="panel-header">
+                <h5><i class="bi bi-clock-history me-2 text-primary"></i>最近评估记录</h5>
+                <a href="{{ url_for('outputs.outputs') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-list me-1"></i>报告管理
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>扇叶型号</th>
+                            <th>评估转速</th>
+                            <th>最优转速</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in recent_records %}
                             <tr>
-                                <th>评估时间</th>
-                                <th>扇叶型号</th>
-                                <th>评估转速</th>
-                                <th>最优转速</th>
-                                <th>操作</th>
+                                <td>{{ record.timestamp }}</td>
+                                <td><strong>{{ record.fan_model }}</strong></td>
+                                <td>{{ record.evaluated_speeds }}</td>
+                                <td><span class="speed-badge">{{ record.optimal_speed }}</span></td>
+                                <td>
+                                    <a href="{{ url_for('report.report') }}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {% for record in recent_records %}
-                                <tr>
-                                    <td>{{ record.timestamp }}</td>
-                                    <td>{{ record.fan_model }}</td>
-                                    <td>{{ record.evaluated_speeds }}</td>
-                                    <td>{{ record.optimal_speed }}</td>
-                                    <td>
-                                        <a href="{{ url_for('report.report') }}" class="btn btn-sm btn-primary">
-                                            <i class="bi bi-eye"></i> 查看
+                        {% else %}
+                            <tr>
+                                <td colspan="5">
+                                    <div class="empty-state">
+                                        <i class="bi bi-file-earmark-text"></i>
+                                        <p>暂无评估记录</p>
+                                        <a href="{{ url_for('main.index') }}" class="btn btn-sm btn-primary mt-2">
+                                            <i class="bi bi-upload me-1"></i>开始评估
                                         </a>
-                                    </td>
-                                </tr>
-                            {% else %}
-                                <tr>
-                                    <td colspan="5" class="text-center">暂无评估记录</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        
-        <!-- 系统状态 -->
-        <div class="card shadow-lg scroll-reveal animate-fade-in-up" style="animation-delay: 0.8s;">
-            <div class="card-header bg-gradient bg-success text-white">
-                <h5 class="mb-0"><i class="bi bi-shield-check me-2"></i>系统状态</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <h6>服务状态</h6>
-                            <div class="d-flex align-items-center">
-                                <span class="badge bg-success me-2">正常</span>
-                                <span>所有服务运行正常</span>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <h6>数据库状态</h6>
-                            <div class="d-flex align-items-center">
-                                <span class="badge bg-success me-2">正常</span>
-                                <span>连接正常，响应时间: {{ db_response_time }}ms</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <h6>存储空间</h6>
-                            <div class="progress mb-2">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: {{ storage_percentage }}%" aria-valuenow="{{ storage_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                            <span class="text-sm">已使用 {{ storage_usage }} MB / {{ storage_limit }} MB</span>
-                        </div>
-                        <div class="mb-3">
-                            <h6>系统负载</h6>
-                            <div class="progress mb-2">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: {{ system_load }}%" aria-valuenow="{{ system_load }}" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                            <span class="text-sm">当前负载: {{ system_load }}%</span>
-                        </div>
-                    </div>
-                </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-    
-    <!-- 使用本地资源加载Bootstrap JavaScript -->
-    <script src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-    
-    <!-- 引入Plotly图表库 -->
-    <script src="https://cdn.plot.ly/plotly-3.3.1.min.js"></script>
-    
-    <!-- 引入Plotly管理器 -->
-    <script src="{{ url_for('static', filename='js/plotly-manager.js') }}"></script>
-    
-    <!-- 引入应用脚本 -->
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-    
-    <!-- 仪表盘图表初始化 -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 初始化评估趋势图
-            const evaluationTrendData = [
-                {
-                    x: {{ evaluation_dates|tojson }},
-                    y: {{ evaluation_counts|tojson }},
-                    mode: 'lines+markers',
-                    type: 'scatter',
-                    name: '评估次数',
-                    line: {
-                        color: '#3498db',
-                        width: 2
-                    },
-                    marker: {
-                        size: 6,
-                        color: '#3498db'
-                    }
-                }
-            ];
-            
-            const evaluationTrendLayout = {
-                title: '每日评估次数',
-                xaxis: {
-                    title: '日期'
-                },
-                yaxis: {
-                    title: '评估次数'
-                },
-                margin: {
-                    l: 50,
-                    r: 50,
-                    b: 50,
-                    t: 50
-                }
-            };
-            
-            Plotly.newPlot('evaluationTrendChart', evaluationTrendData, evaluationTrendLayout);
-            
-            // 初始化转速分布图
-            const speedDistributionData = [
-                {
-                    values: {{ speed_counts|tojson }},
-                    labels: {{ speed_labels|tojson }},
-                    type: 'pie',
-                    hole: 0.4,
-                    marker: {
-                        colors: ['#3498db', '#2ecc71', '#f39c12', '#e74c3c', '#9b59b6']
-                    }
-                }
-            ];
-            
-            const speedDistributionLayout = {
-                title: '最优转速分布',
-                margin: {
-                    l: 50,
-                    r: 50,
-                    b: 50,
-                    t: 50
-                }
-            };
-            
-            Plotly.newPlot('speedDistributionChart', speedDistributionData, speedDistributionLayout);
-        });
+
+    <script defer src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='libs/plotly/plotly.min.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/safe-fetch.js') }}"></script>
+    <script defer>
+        var _dash = {
+            evaluation_dates: {{ evaluation_dates|tojson }},
+            evaluation_counts: {{ evaluation_counts|tojson }},
+            speed_labels: {{ speed_labels|tojson }},
+            speed_counts: {{ speed_counts|tojson }},
+            model_labels: {{ model_labels|tojson }},
+            model_counts: {{ model_counts|tojson }}
+        };
     </script>
+    <script defer src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>

@@ -15,10 +15,10 @@
             <!-- 动态判断文件类型，根据实际情况使用正确的端点 -->
             {% if chart_files.png and chart_files.png.endswith('.html') %}
                 <!-- 如果png路径实际上是html文件，直接使用HTML显示 -->
-                <iframe src="{{ url_for('outputs.view_chart_html', filename=chart_files.png) }}" class="chart-iframe" style="width: 100%; height: 400px; border: 1px solid #eee; border-radius: 5px;"></iframe>
+                <iframe src="{{ url_for('outputs.view_chart_html', filename=chart_files.png) }}" class="chart-iframe"></iframe>
             {% else %}
                 <!-- 正常显示PNG图表 -->
-                <img src="{{ url_for('outputs.view_chart', filename=chart_files.png) }}" class="chart-img img-fluid" alt="{{ surface_name }}面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="{{ chart_title_prefix }}{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}" style="max-width: 100%; height: auto; cursor: pointer;">
+                <img src="{{ url_for('outputs.view_chart', filename=chart_files.png) }}" class="chart-img img-fluid" alt="{{ surface_name }}面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="{{ chart_title_prefix }}{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
             {% endif %}
         </div>
         <div class="mt-2">
@@ -68,10 +68,10 @@
             <!-- 动态判断文件类型，根据实际情况使用正确的端点 -->
             {% if chart_files.png and chart_files.png.endswith('.html') %}
                 <!-- 如果png路径实际上是html文件，直接使用HTML显示 -->
-                <iframe src="{{ url_for('outputs.view_chart_html', filename=chart_files.png) }}" class="chart-iframe" style="width: 100%; height: 400px; border: 1px solid #eee; border-radius: 5px;"></iframe>
+                <iframe src="{{ url_for('outputs.view_chart_html', filename=chart_files.png) }}" class="chart-iframe"></iframe>
             {% else %}
                 <!-- 正常显示PNG图表 -->
-                <img src="{{ url_for('outputs.view_chart', filename=chart_files.png) }}" class="chart-img img-fluid" alt="{{ surface_name }}面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="{{ chart_title_prefix }}{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}" style="max-width: 100%; height: auto; cursor: pointer;">
+                <img src="{{ url_for('outputs.view_chart', filename=chart_files.png) }}" class="chart-img img-fluid" alt="{{ surface_name }}面图" data-bs-toggle="modal" data-bs-target="#chartModal" data-chart-title="{{ chart_title_prefix }}{{ chart_type_config.get(chart_type, {}).name or chart_type }}" data-chart-src="{{ url_for('outputs.view_chart_html', filename=chart_files.html) }}">
             {% endif %}
         </div>
         <div class="mt-2">

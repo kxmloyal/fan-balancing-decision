@@ -7,192 +7,7 @@
     <link href="{{ url_for('static', filename='libs/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='libs/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-    <style>
-        /* 添加表格样式以提高可读性 */
-        .table-statistics th {
-            background-color: #f8f9fa;
-            color: #495057;
-            font-weight: 600;
-            vertical-align: middle;
-        }
-        
-        .table-statistics .header-main {
-            background-color: #e9ecef;
-            color: #212529;
-            font-weight: 700;
-        }
-        
-        .table-statistics .header-sub {
-            background-color: #f8f9fa;
-            color: #495057;
-            font-weight: 600;
-        }
-        
-        .table-statistics .face-p1 {
-            background-color: #cce5ff;
-            color: #004085;
-            font-weight: 600;
-        }
-        
-        .table-statistics .face-p2 {
-            background-color: #ffeacc;
-            color: #856404;
-            font-weight: 600;
-        }
-        
-        .table-statistics .face-st {
-            background-color: #d4edda;
-            color: #155724;
-            font-weight: 600;
-        }
-        
-        .table-statistics .evaluation-col {
-            background-color: #f0f0f0;
-            color: #333;
-            font-weight: 600;
-        }
-        
-        .chart-display-control {
-            margin-bottom: 20px;
-        }
-        .chart-type-selector {
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-        }
-        .chart-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-        .chart-col {
-            flex: 1;
-            min-width: 300px;
-        }
-        .chart-stacked .chart-container {
-            margin-bottom: 30px;
-        }
-        .chart-parallel .chart-col {
-            display: flex;
-            flex-direction: column;
-        }
-        .export-buttons {
-            margin-top: 20px;
-        }
-        /* 图表模态框样式 */
-        .modal-chart-container {
-            text-align: center;
-        }
-        .modal-chart-container iframe {
-            width: 100%;
-            height: 70vh; /* 增加高度以更好地利用屏幕空间 */
-            border: none;
-        }
-        
-        /* 响应式改进 */
-        @media (min-width: 1400px) {
-            .container {
-                max-width: 1320px;
-            }
-            .chart-col {
-                min-width: 350px;
-            }
-            .modal-chart-container iframe {
-                height: 75vh;
-            }
-        }
-        
-        @media (min-width: 1600px) {
-            .container {
-                max-width: 1520px;
-            }
-            .chart-col {
-                min-width: 400px;
-            }
-            .modal-chart-container iframe {
-                height: 80vh;
-            }
-        }
-        
-        @media (min-width: 1900px) {
-            .container {
-                max-width: 1720px;
-            }
-            .chart-col {
-                min-width: 450px;
-            }
-            .modal-chart-container iframe {
-                height: 85vh;
-            }
-        }
-        
-        /* 图表容器响应式调整 */
-        .chart-container {
-            margin: 20px 0;
-            padding: 20px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        
-        @media (min-width: 1200px) {
-            .chart-container {
-                padding: 25px;
-            }
-        }
-        
-        @media (min-width: 1400px) {
-            .chart-container {
-                padding: 30px;
-            }
-        }
-        
-        /* 模态框最大化支持 */
-        .modal-fullscreen-custom {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            z-index: 1050 !important;
-            margin: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-        }
-        
-        .modal-fullscreen-custom .modal-dialog {
-            max-width: 100% !important;
-            max-height: 100% !important;
-            margin: 0 !important;
-            height: 100% !important;
-        }
-        
-        .modal-fullscreen-custom .modal-content {
-            height: 100% !important;
-            border: none !important;
-            border-radius: 0 !important;
-        }
-        
-        .modal-fullscreen-custom .modal-body {
-            flex-grow: 1;
-            overflow-y: auto;
-        }
-        
-        .modal-fullscreen-custom .modal-chart-container {
-            height: 100%;
-        }
-        
-        .modal-fullscreen-custom .modal-chart-container iframe {
-            height: 85vh !important;
-        }
-        
-        /* 图表类型标签样式 */
-        .chart-type-badge {
-            margin-right: 5px;
-            margin-bottom: 5px;
-        }
-    </style>
+    <!-- 样式已移至style.css -->
 </head>
 <body>
     <!-- 导入导航栏宏 -->
@@ -628,10 +443,10 @@
                 <!-- 导出报告功能 -->
                 <div class="export-buttons text-center mt-4">
                     <h6 class="text-primary mb-3"><i class="bi bi-file-earmark-arrow-down me-2"></i>导出完整报告</h6>
-                    <a href="{{ url_for('report.export_report', report_type='html') }}" class="btn btn-success me-2">
+                    <a href="{{ url_for('report.export_report', report_type='html') }}" class="btn btn-success me-2 js-export-link">
                         <i class="bi bi-filetype-html me-1"></i>导出HTML报告
                     </a>
-                    <a href="{{ url_for('report.export_report', report_type='pdf') }}" class="btn btn-danger">
+                    <a href="{{ url_for('report.export_report', report_type='pdf') }}" class="btn btn-danger js-export-link">
                         <i class="bi bi-filetype-pdf me-1"></i>导出PDF报告
                     </a>
                 </div>
@@ -647,23 +462,6 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-    
-    <!-- 引入Plotly图表库 -->
-    <script src="https://cdn.plot.ly/plotly-3.3.1.min.js"></script>
-    
-    <!-- 引入Plotly图表模块 -->
-    <script src="{{ url_for('static', filename='js/plotly-manager.js') }}"></script>
-    
-    <!-- 引入图表功能 -->
-    <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
-    
-    <!-- 引入模态框管理类 -->
-    <script src="{{ url_for('static', filename='js/modal-manager.js') }}"></script>
-    
-    <!-- 引入图表显示问题修复脚本 -->
-    <script src="{{ url_for('static', filename='js/chart-fix.js') }}"></script>
-    
     <!-- 图表模态框 -->
     <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl" id="chartModalDialog">
@@ -671,7 +469,6 @@
                 <div class="modal-header">
                     <h5 class="modal-title" id="chartModalLabel">图表详情</h5>
                     <div class="d-flex gap-2">
-                        <!-- 全屏按钮 -->
                         <button type="button" class="btn btn-outline-primary" id="fullscreenBtn" title="全屏放大">
                             <i class="bi bi-arrows-fullscreen"></i>
                         </button>
@@ -679,9 +476,8 @@
                     </div>
                 </div>
                 <div class="modal-body">
-                    <div class="modal-chart-container" style="overflow: hidden; display: flex; height: 100%; width: 100%;">
-                        <!-- 直接渲染图表的容器，替代iframe -->
-                        <div id="chartContainer" style="flex: 1; height: 100%; width: 100%; min-height: 600px;"></div>
+                    <div class="modal-chart-container">
+                        <div id="chartContainer"></div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -690,16 +486,29 @@
             </div>
         </div>
     </div>
+
+    <script src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     
+    <!-- 引入Plotly图表库 -->
+    <script src="{{ url_for('static', filename='libs/plotly/plotly.min.js') }}"></script>
+    <!-- 引入Plotly图表管理器（定义类 + 创建实例） -->
+    <script src="{{ url_for('static', filename='js/simple-plotly-manager.js') }}"></script>
+    <!-- 扩展SimplePlotlyManager原型方法（必须在主文件之后加载） -->
+    <script src="{{ url_for('static', filename='js/plotly-chart-builders.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/plotly-theme-manager.js') }}"></script>
+    
+    <!-- 引入模态框管理类 -->
+    <script src="{{ url_for('static', filename='js/modal-manager.js') }}"></script>
+    
+    <!-- 引入图表功能 -->
+    <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    
+    <!-- 初始化模态框管理器 -->
     <script>
-        // 页面加载完成后初始化图表功能
-        document.addEventListener('DOMContentLoaded', function() {
-            // 初始化所有图表功能
-            initAllChartFeatures('form');
-            
-            // 修复图表显示问题
-            setTimeout(fixChartDisplay, 100);
-        });
+        window.modalManager = new ModalManager('chartModal');
     </script>
+    
+    <!-- 引入匹配结果脚本 -->
+    <script src="{{ url_for('static', filename='js/match-result.js') }}"></script>
 </body>
 </html>

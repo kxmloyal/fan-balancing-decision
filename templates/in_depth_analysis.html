@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深入分析 - 扇叶平衡补土转速评估工具</title>
+    <!-- 使用本地资源加载Bootstrap和相关库 -->
+    <link href="{{ url_for('static', filename='libs/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='libs/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/skill_evaluation.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/in_depth_analysis.css') }}" rel="stylesheet">
+</head>
+<body>
+    <!-- 导航栏 -->
+    {% import 'macros/navbar.html' as navbar_macros %}
+    {{ navbar_macros.render_navbar(active_page='in_depth_analysis') }}
+
+    <div class="container main-content">
+        <!-- 页面标题 -->
+        <div class="row mb-6">
+            <div class="col-12">
+                <div class="bg-white p-5 rounded-lg shadow-md">
+                    <h1 class="text-primary display-5">
+                        <i class="bi bi-graph-up me-3"></i>深入分析
+                    </h1>
+                    <p class="text-muted lead">基于高级数据分析的综合深入分析系统</p>
+                    <div class="mt-4 border-top pt-4">
+                        <p class="text-sm text-muted">
+                            <i class="bi bi-info-circle me-2"></i>
+                            深入分析系统提供全面的数据分析功能，包括统计分析、趋势分析、异常检测和聚类分析，帮助您更好地理解数据特征和优化生产工艺。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 消息提示区域 -->
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-triangle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- 错误提示区域 -->
+        <div id="errorAlertContainer" class="mb-4"></div>
+
+        <!-- 数据输入区域 -->
+        <div class="row mb-6">
+            <div class="col-lg-12">
+                <div class="card shadow-lg animate-fade-in-up">
+                    <div class="card-header bg-gradient bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-database me-2"></i>数据输入</h5>
+                        <div class="d-flex align-items-center gap-3">
+                            <button type="button" class="btn btn-sm btn-outline-light" id="manualResetBtn" title="手动重置所有数据">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i>手动重置
+                            </button>
+                            <span class="badge bg-white text-primary">Step 1</span>
+                            <button class="btn btn-sm text-white p-0 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#inputSectionCollapse" aria-expanded="true" aria-controls="inputSectionCollapse" id="inputCollapseToggle">
+                                <i class="bi bi-chevron-up fs-5" id="inputCollapseIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="collapse show" id="inputSectionCollapse">
+                    <div class="card-body p-6">
+                        <form id="inDepthAnalysisForm">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="row g-6">
+                                <div class="col-md-6">
+                                    <div class="card p-5 shadow-sm border-0">
+                                        <div class="mb-4">
+                                            <label for="fanModel" class="form-label font-weight-bold">扇叶型号</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                                                <input type="text" class="form-control form-control-lg" id="fanModel" value="1118" required>
+                                            </div>
+                                            <div class="form-text mt-2">扇叶型号将用于报告生成</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card p-5 shadow-sm border-0">
+                                        <div class="mb-4">
+                                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                                <label for="testData" class="form-label font-weight-bold mb-0">测试数据（JSON格式）</label>
+                                                <span id="jsonValidationStatus" class="badge bg-secondary">待验证</span>
+                                            </div>
+                                            <div class="json-editor-wrapper">
+                                                <pre class="json-editor-highlight" aria-hidden="true"><code class="language-json" id="jsonHighlight">{{ test_data_json }}</code></pre>
+                                                <textarea
+                                                    class="json-editor-textarea"
+                                                    id="testData"
+                                                    rows="8"
+                                                    placeholder="输入测试数据JSON"
+                                                    required
+                                                    spellcheck="false"
+                                                    autocomplete="off"
+                                                    autocorrect="off"
+                                                    autocapitalize="off"
+                                                >{{ test_data_json }}</textarea>
+                                            </div>
+                                            <div id="jsonErrorContainer" class="mt-2"></div>
+                                            <small class="text-muted mt-2 d-block">支持从首页分析结果获取数据</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 数据筛选控件 -->
+                            <div class="row g-6 mt-6">
+                                <div class="col-lg-12">
+                                    <div class="card p-5 shadow-sm border-0">
+                                        <h6 class="font-weight-bold mb-4"><i class="bi bi-filter me-2"></i>数据筛选</h6>
+                                        <div class="row g-4">
+                                            <div class="col-md-3">
+                                                <label for="speedRange" class="form-label">转速范围</label>
+                                                <select class="form-select form-select-lg" id="speedRange">
+                                                    <option value="all">全部转速</option>
+                                                    <option value="low">低速 (≤1000rpm)</option>
+                                                    <option value="medium">中速 (1000-3000rpm)</option>
+                                                    <option value="high">高速 (>3000rpm)</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label for="dataSurface" class="form-label">数据面</label>
+                                                <select class="form-select form-select-lg" id="dataSurface">
+                                                    <option value="all">全部面</option>
+                                                    <option value="p1">P1面</option>
+                                                    <option value="p2">P2面</option>
+                                                    <option value="st">ST面</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label for="dataQuality" class="form-label">数据质量</label>
+                                                <select class="form-select form-select-lg" id="dataQuality">
+                                                    <option value="all">全部质量</option>
+                                                    <option value="excellent">优秀</option>
+                                                    <option value="good">良好</option>
+                                                    <option value="average">一般</option>
+                                                    <option value="poor">不足</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label for="anomalyFilter" class="form-label">异常值筛选</label>
+                                                <select class="form-select form-select-lg" id="anomalyFilter">
+                                                    <option value="all">包含异常值</option>
+                                                    <option value="no_anomaly">排除异常值</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row mt-6">
+                                <div class="col-12">
+                                    <div class="d-flex flex-wrap gap-4 justify-content-center">
+                                        <button type="button" class="btn btn-primary btn-lg">
+                                            <i class="bi bi-download me-2"></i>从当前分析结果加载
+                                        </button>
+                                        <button type="submit" class="btn btn-success btn-lg" id="evaluateBtn">
+                                            <i class="bi bi-play me-2"></i>开始分析
+                                        </button>
+                                        <button type="reset" class="btn btn-outline-secondary btn-lg">
+                                            <i class="bi bi-arrow-counterclockwise me-2"></i>重置
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 加载动画 -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+            <p class="mt-3 text-muted">正在进行高级数据分析...</p>
+        </div>
+
+        <!-- 分析进度条 -->
+        <div id="analysisProgress" class="d-none mt-3">
+            <div class="card shadow-sm">
+                <div class="card-body py-3 px-4">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="text-muted"><i class="bi bi-cpu me-1"></i>数据计算进度</small>
+                        <small class="text-muted" id="progressPercentText">0%</small>
+                    </div>
+                    <div class="progress" style="height: 8px;" id="analysisProgressBar">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 评估结果区域 -->
+        <div class="result-section" id="resultSection">
+            <!-- 分析等级卡片 -->
+            <div class="row mt-6">
+                <div class="col-lg-12">
+                    <div class="card shadow-md animate-fade-in-up" style="animation-delay: 0.1s;">
+                        <div class="card-header bg-gradient bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-award me-2"></i>分析结果评定</h5>
+                            <span class="badge bg-white text-primary">Step 2</span>
+                        </div>
+                        <div class="card-body text-center p-6">
+                            <div class="analysis-level-badge d-inline-block" id="analysisLevelBadge">
+                                需要提升
+                            </div>
+                            <div class="mt-4">
+                                <h3 id="skillScore">分析得分: 0.00</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 统计概览 -->
+            <div class="row mt-6">
+                <div class="col-lg-3 col-md-6">
+                    <div class="card shadow-sm animate-fade-in-up hover-lift" style="animation-delay: 0.2s;">
+                        <div class="card-body stat-card p-5">
+                            <div class="stat-value" id="dataQualityValue">优秀</div>
+                            <div class="stat-label">
+                                <span class="data-quality-indicator quality-excellent"></span>
+                                数据质量
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="card shadow-sm animate-fade-in-up hover-lift" style="animation-delay: 0.3s;">
+                        <div class="card-body stat-card p-5">
+                            <div class="stat-value" id="processStabilityValue">稳定</div>
+                            <div class="stat-label">工艺稳定性</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="card shadow-sm animate-fade-in-up hover-lift" style="animation-delay: 0.4s;">
+                        <div class="card-body stat-card p-5">
+                            <div class="stat-value" id="anomalyCount">0</div>
+                            <div class="stat-label">异常数据点</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="card shadow-sm animate-fade-in-up hover-lift" style="animation-delay: 0.5s;">
+                        <div class="card-body stat-card p-5">
+                            <div class="stat-value" id="optimalSpeedValue">-</div>
+                            <div class="stat-label">最优转速</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 高级统计分析结果 -->
+            <div class="row mt-6">
+                <div class="col-lg-6">
+                    <div class="card shadow-md animate-fade-in-up hover-lift" style="animation-delay: 0.6s;">
+                        <div class="card-header bg-gradient bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>基本统计量</h5>
+                        </div>
+                        <div class="card-body p-5">
+                            <div id="basicStatsContent">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>指标</th>
+                                                <th>P1面</th>
+                                                <th>P2面</th>
+                                                <th>ST面</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="basicStatsTable">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card shadow-md animate-fade-in-up hover-lift" style="animation-delay: 0.7s;">
+                        <div class="card-header bg-gradient bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>趋势分析</h5>
+                        </div>
+                        <div class="card-body p-5">
+                            <div id="trendAnalysisContent">
+                                <div class="chart-container">
+                                    <canvas id="trendChart"></canvas>
+                                </div>
+                                <div id="trendAnalysisTable" class="mt-4"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 图表分析 -->
+            <div class="row mt-6">
+                <div class="col-lg-4">
+                    <div class="card shadow-md animate-fade-in-up hover-lift" style="animation-delay: 0.8s;">
+                        <div class="card-header bg-gradient bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>数据分布</h5>
+                        </div>
+                        <div class="card-body p-5">
+                            <div class="chart-container">
+                                <canvas id="distributionChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card shadow-md animate-fade-in-up hover-lift" style="animation-delay: 0.9s;">
+                        <div class="card-header bg-gradient bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-bar-chart-fill me-2"></i>数据对比</h5>
+                        </div>
+                        <div class="card-body p-5">
+                            <div class="chart-container">
+                                <canvas id="comparisonChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card shadow-md animate-fade-in-up hover-lift" style="animation-delay: 1.0s;">
+                        <div class="card-header bg-gradient bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-line-chart me-2"></i>变化趋势</h5>
+                        </div>
+                        <div class="card-body p-5">
+                            <div class="chart-container">
+                                <canvas id="changeTrendChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 异常检测结果 -->
+            <div class="row mt-6">
+                <div class="col-lg-12">
+                    <div class="card shadow-md animate-fade-in-up hover-lift" style="animation-delay: 0.8s;">
+                        <div class="card-header bg-gradient bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>异常检测结果</h5>
+                        </div>
+                        <div class="card-body p-5">
+                            <div id="anomalyDetectionContent">
+                                <div id="anomalyDetectionTable"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 改进建议 -->
+            <div class="row mt-6">
+                <div class="col-lg-12">
+                    <div class="card shadow-md animate-fade-in-up hover-lift" style="animation-delay: 0.9s;">
+                        <div class="card-header bg-gradient bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>改进建议</h5>
+                        </div>
+                        <div class="card-body p-5">
+                            <div id="recommendationsContent">
+                                <div id="recommendationsList"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 报告生成 -->
+            <div class="row mt-6">
+                <div class="col-lg-12">
+                    <div class="card shadow-md animate-fade-in-up hover-lift" style="animation-delay: 1.0s;">
+                        <div class="card-header bg-gradient bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>分析报告生成</h5>
+                        </div>
+                        <div class="card-body p-5">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-4">
+                                        <label for="reportTemplate" class="form-label">报告模板</label>
+                                        <select class="form-select form-select-lg" id="reportTemplate">
+                                            <option value="standard">标准报告</option>
+                                            <option value="detailed">详细报告</option>
+                                            <option value="custom">自定义报告</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label for="reportFormat" class="form-label">报告格式</label>
+                                        <select class="form-select form-select-lg" id="reportFormat">
+                                            <option value="html">HTML</option>
+                                            <option value="pdf">PDF</option>
+                                            <option value="excel">Excel</option>
+                                            <option value="word">Word</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-4">
+                                        <label class="form-label">报告内容</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="summary" id="includeSummary" checked>
+                                            <label class="form-check-label" for="includeSummary">分析摘要</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="basicStats" id="includeBasicStats" checked>
+                                            <label class="form-check-label" for="includeBasicStats">基本统计信息</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="advancedStats" id="includeAdvancedStats" checked>
+                                            <label class="form-check-label" for="includeAdvancedStats">高级统计分析</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="trendAnalysis" id="includeTrendAnalysis" checked>
+                                            <label class="form-check-label" for="includeTrendAnalysis">趋势分析</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="anomalyDetection" id="includeAnomalyDetection" checked>
+                                            <label class="form-check-label" for="includeAnomalyDetection">异常检测</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="recommendations" id="includeRecommendations" checked>
+                                            <label class="form-check-label" for="includeRecommendations">改进建议</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-center mt-4">
+                                <button type="button" class="btn btn-primary btn-lg" id="generateReportBtn">
+                                    <i class="bi bi-file-earmark-arrow-down me-2"></i>生成报告
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="row mt-6 mb-6">
+                <div class="col-lg-12 text-center">
+                    <div class="d-flex flex-wrap justify-content-center gap-4">
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-primary btn-lg dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-download me-2"></i>导出分析结果
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-lg-end">
+                                <li><a class="dropdown-item" href="#" data-format="json">JSON格式</a></li>
+                                <li><a class="dropdown-item" href="#" data-format="excel">Excel格式</a></li>
+                                <li><a class="dropdown-item" href="#" data-format="pdf">PDF格式</a></li>
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-lg" id="viewDetailedBtn">
+                            <i class="bi bi-info-circle me-2"></i>查看详细数据
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用本地资源加载Bootstrap JavaScript -->
+    <script defer src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    
+    <link href="{{ url_for('static', filename='libs/prism/prism.min.css') }}" rel="stylesheet" />
+    <script defer src="{{ url_for('static', filename='libs/prism/prism.min.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='libs/prism/prism-json.min.js') }}"></script>
+    
+    <!-- 引入Chart.js用于数据可视化（本地文件） -->
+    <script defer src="{{ url_for('static', filename='libs/chartjs/chart.umd.min.js') }}"></script>
+    
+    <!-- 引入滚动动画管理器 -->
+    <script defer src="{{ url_for('static', filename='js/scroll-animation.js') }}"></script>
+    
+    <script defer src="{{ url_for('static', filename='js/in_depth_analysis_enhanced.js') }}"></script>
+    
+    <script>
+        window.__TEMPLATE_DATA__ = {
+            testDataJson: {{ test_data_json | tojson }},
+            csrfToken: '{{ csrf_token() }}'
+        };
+    </script>
+</body>
+</html>

@@ -1,183 +1,264 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-配置管理工具类：用于管理数据库连接参数的配置
+配置管理器（自包含，避免循环导入）
+
+⚠️ wsgi.py→blueprints→settings_bp→utils.config_manager 构成导入链。
+本模块独立管理 config/db_config.json，不从 app.* 导入任何内容，
+避免触发 app/__init__.py→wsgi.app 循环导入。
+
+与 app/utils/config_manager.py 功能等同，但独立存在。
 """
 
-import os
 import json
-import base64
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.backends import default_backend
+import os
+import sqlite3
+from urllib.parse import quote_plus
+
 
 class ConfigManager:
-    """配置管理类"""
-    
+    """配置管理器类"""
+
     def __init__(self):
-        """初始化配置管理器"""
-        self.config_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "db_config.json")
-        self.key_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "secret.key")
-        self.secret_key = self._load_or_generate_key()
-        self.cipher_suite = Fernet(self.secret_key)
-        
-        # 确保配置目录存在
-        config_dir = os.path.dirname(self.config_file)
-        if not os.path.exists(config_dir):
-            os.makedirs(config_dir)
-    
-    def _load_or_generate_key(self):
-        """加载或生成加密密钥"""
-        # 确保配置目录存在
-        config_dir = os.path.dirname(self.key_file)
-        if not os.path.exists(config_dir):
-            os.makedirs(config_dir)
-        
-        if os.path.exists(self.key_file):
-            with open(self.key_file, "rb") as f:
-                return f.read()
-        else:
-            # 生成新密钥
-            key = Fernet.generate_key()
-            with open(self.key_file, "wb") as f:
-                f.write(key)
-            # 设置密钥文件权限（仅当前用户可读写）
-            try:
-                os.chmod(self.key_file, 0o600)
-            except Exception:
-                # 在某些系统上可能无法设置权限，忽略错误
-                pass
-            return key
-    
-    def encrypt(self, data):
-        """加密数据"""
-        if not data:
-            return data
-        return self.cipher_suite.encrypt(data.encode()).decode()
-    
-    def decrypt(self, data):
-        """解密数据"""
-        if not data:
-            return data
-        try:
-            return self.cipher_suite.decrypt(data.encode()).decode()
-        except Exception:
-            return data
-    
-    def get_db_config(self):
-        """获取数据库连接配置"""
-        # 首先尝试从环境变量获取
-        env_config = self._get_config_from_env()
-        if env_config:
-            return env_config
-        
-        # 然后尝试从配置文件获取
-        file_config = self._get_config_from_file()
-        if file_config:
-            return file_config
-        
-        # 返回默认配置
-        return {
-            "db_type": "sqlite",
-            "host": "",
-            "port": "",
-            "database": "",
-            "username": "",
-            "password": ""
-        }
-    
-    def _get_config_from_env(self):
-        """从环境变量获取配置"""
-        db_type = os.environ.get("DB_TYPE")
-        if not db_type:
-            return None
-        
-        return {
-            "db_type": db_type,
-            "host": os.environ.get("DB_HOST", ""),
-            "port": os.environ.get("DB_PORT", ""),
-            "database": os.environ.get("DB_NAME", ""),
-            "username": os.environ.get("DB_USER", ""),
-            "password": self.decrypt(os.environ.get("DB_PASSWORD", ""))
-        }
-    
-    def _get_config_from_file(self):
-        """从配置文件获取配置"""
-        if not os.path.exists(self.config_file):
-            return None
-        
+        self.config_file = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "db_config.json"
+        )
+        self.config = self._load_config()
+
+    def _load_config(self):
         try:
             with open(self.config_file, "r", encoding="utf-8") as f:
-                config = json.load(f)
-            
-            # 解密密码
-            if "password" in config:
-                config["password"] = self.decrypt(config["password"])
-            
-            return config
+                return json.load(f)
         except Exception:
-            return None
-    
-    def save_db_config(self, config, save_method="file"):
-        """保存数据库连接配置"""
-        try:
-            # 加密密码
-            config_to_save = config.copy()
-            if "password" in config_to_save:
-                config_to_save["password"] = self.encrypt(config_to_save["password"])
-            
-            if save_method == "file":
-                # 保存到文件
-                with open(self.config_file, "w", encoding="utf-8") as f:
-                    json.dump(config_to_save, f, ensure_ascii=False, indent=2)
-                # 设置配置文件权限（仅当前用户可读写）
-                os.chmod(self.config_file, 0o600)
-            elif save_method == "env":
-                # 保存到环境变量
-                os.environ["DB_TYPE"] = config_to_save["db_type"]
-                os.environ["DB_HOST"] = config_to_save.get("host", "")
-                os.environ["DB_PORT"] = config_to_save.get("port", "")
-                os.environ["DB_NAME"] = config_to_save.get("database", "")
-                os.environ["DB_USER"] = config_to_save.get("username", "")
-                os.environ["DB_PASSWORD"] = config_to_save.get("password", "")
-            
-            return True
-        except Exception:
-            return False
-    
-    def reset_db_config(self):
-        """重置数据库连接配置"""
-        try:
-            # 删除配置文件
-            if os.path.exists(self.config_file):
-                os.remove(self.config_file)
-            
-            # 清除环境变量
-            env_vars = ["DB_TYPE", "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"]
-            for var in env_vars:
-                if var in os.environ:
-                    del os.environ[var]
-            
-            return True
-        except Exception:
-            return False
-    
+            return {
+                "database": {
+                    "type": "sqlite",
+                    "name": "data.db",
+                    "host": "localhost",
+                    "port": 3306,
+                    "user": "root",
+                    "password": "",
+                }
+            }
+
     def get_sqlalchemy_uri(self):
-        """获取SQLAlchemy连接URI"""
-        config = self.get_db_config()
-        db_type = config.get("db_type", "sqlite")
-        
+        db_config = self.config.get("database", {})
+        db_type = db_config.get("type", "sqlite")
+
         if db_type == "sqlite":
-            base_dir = os.path.dirname(os.path.dirname(__file__))
-            return f"sqlite:///{os.path.join(base_dir, 'data.db')}"
+            db_name = db_config.get("name", "data.db")
+            db_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                db_name,
+            )
+            return f"sqlite:///{db_path}"
         elif db_type == "mysql":
-            return f"mysql+pymysql://{config.get('username')}:{config.get('password')}@{config.get('host')}:{config.get('port')}/{config.get('database')}"
+            host = db_config.get("host", "localhost")
+            port = db_config.get("port", 3306)
+            user = db_config.get("user", "root")
+            password = db_config.get("password", "")
+            db_name = db_config.get("name", "data")
+            # 解密已加密存储的密码（兼容旧明文格式）
+            if password:
+                try:
+                    from app.utils.crypto_utils import decrypt_password
+                    password = decrypt_password(password)
+                except Exception:
+                    pass
+            encoded_user = quote_plus(user) if user else ""
+            encoded_pass = quote_plus(password) if password else ""
+            return f"mysql+pymysql://{encoded_user}:{encoded_pass}@{host}:{port}/{db_name}?charset=utf8mb4"
         elif db_type == "postgresql":
-            return f"postgresql://{config.get('username')}:{config.get('password')}@{config.get('host')}:{config.get('port')}/{config.get('database')}"
+            host = db_config.get("host", "localhost")
+            port = db_config.get("port", 5432)
+            user = db_config.get("user", "postgres")
+            password = db_config.get("password", "")
+            db_name = db_config.get("name", "data")
+            encoded_user = quote_plus(user) if user else ""
+            encoded_pass = quote_plus(password) if password else ""
+            return f"postgresql://{encoded_user}:{encoded_pass}@{host}:{port}/{db_name}"
         else:
-            base_dir = os.path.dirname(os.path.dirname(__file__))
-            return f"sqlite:///{os.path.join(base_dir, 'data.db')}"
+            db_name = db_config.get("name", "data.db")
+            db_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                db_name,
+            )
+            return f"sqlite:///{db_path}"
+
+    def get_all_config(self):
+        return self.config
+
+    def set_config(self, key, value):
+        keys = key.split(".")
+        config = self.config
+        for k in keys[:-1]:
+            if k not in config:
+                config[k] = {}
+            config = config[k]
+        config[keys[-1]] = value
+
+    def save_config(self):
+        try:
+            config_dir = os.path.dirname(self.config_file)
+            if not os.path.exists(config_dir):
+                os.makedirs(config_dir)
+
+            temp_file = self.config_file + ".tmp"
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(self.config, f, ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temp_file, self.config_file)
+            return True
+        except Exception:
+            return False
+
+    def get_db_config(self):
+        db_section = self.config.get("database", None)
+        if isinstance(db_section, dict):
+            db_config = db_section
+            raw_password = db_config.get("password", "")
+            # 解密已加密存储的密码
+            if raw_password:
+                try:
+                    from app.utils.crypto_utils import decrypt_password
+                    raw_password = decrypt_password(raw_password)
+                except Exception:
+                    pass
+            return {
+                "db_type": db_config.get("type", "sqlite"),
+                "host": db_config.get("host", "localhost"),
+                "port": db_config.get("port", 3306),
+                "database": db_config.get("name", "data.db"),
+                "username": db_config.get("user", "root"),
+                "password": raw_password,
+            }
+        else:
+            return {
+                "db_type": self.config.get("db_type", "sqlite"),
+                "host": self.config.get("host", "localhost"),
+                "port": self.config.get("port", 3306),
+                "database": self.config.get("database", "data.db"),
+                "username": self.config.get("username", "root"),
+                "password": self.config.get("password", ""),
+            }
+
+    def save_db_config(self, config_dict, save_method="file"):
+        raw_password = config_dict.get("password", "")
+        # 加密密码后再存储，与 connection_configs.json 保持一致
+        try:
+            from app.utils.crypto_utils import encrypt_password
+            stored_password = encrypt_password(raw_password) if raw_password else ""
+        except Exception:
+            stored_password = raw_password
+        self.config["database"] = {
+            "type": config_dict.get("db_type", "sqlite"),
+            "name": config_dict.get("database", "data.db"),
+            "host": config_dict.get("host", "localhost"),
+            "port": config_dict.get("port", 3306),
+            "user": config_dict.get("username", "root"),
+            "password": stored_password,
+        }
+        if save_method == "file":
+            return self.save_config()
+        return True
+
+    def get_face_weights(self):
+        default_weights = {"P1": 0.4, "P2": 0.4, "ST": 0.2}
+        return self.config.get("face_weights", default_weights)
+
+    def save_face_weights(self, weights_dict):
+        self.config["face_weights"] = {
+            "P1": float(weights_dict.get("P1", 0.4)),
+            "P2": float(weights_dict.get("P2", 0.4)),
+            "ST": float(weights_dict.get("ST", 0.2)),
+        }
+        return self.save_config()
+
+    def reset_face_weights(self):
+        self.config["face_weights"] = {"P1": 0.4, "P2": 0.4, "ST": 0.2}
+        return self.save_config()
+
+    def reset_db_config(self):
+        return self.reset_config()
+
+    def reset_config(self):
+        self.config = {
+            "database": {
+                "type": "sqlite",
+                "name": "data.db",
+                "host": "localhost",
+                "port": 3306,
+                "user": "root",
+                "password": "",
+            }
+        }
+        return self.save_config()
+
+    def test_database_connection(self, db_config):
+        try:
+            db_type = db_config.get("db_type", "sqlite")
+
+            if db_type == "sqlite":
+                db_name = db_config.get("database", "data.db")
+                db_path = os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                    db_name,
+                )
+                db_dir = os.path.dirname(db_path)
+                if not os.path.exists(db_dir):
+                    os.makedirs(db_dir)
+                conn = sqlite3.connect(db_path)
+                conn.close()
+                return {"success": True, "message": "SQLite连接成功！"}
+            elif db_type == "mysql":
+                try:
+                    import pymysql
+
+                    host = db_config.get("host", "localhost")
+                    port = int(db_config.get("port", 3306))
+                    user = db_config.get("username", "root")
+                    password = db_config.get("password", "")
+                    db = db_config.get("database", "data")
+
+                    conn = pymysql.connect(
+                        host=host, port=port, user=user, password=password, db=db, charset="utf8mb4"
+                    )
+                    conn.close()
+                    return {"success": True, "message": "MySQL连接成功！"}
+                except ImportError:
+                    return {
+                        "success": False,
+                        "message": "缺少pymysql模块，请安装：pip install pymysql",
+                    }
+                except Exception as e:
+                    return {"success": False, "message": f"MySQL连接失败：{str(e)}"}
+            elif db_type == "postgresql":
+                try:
+                    import psycopg2
+
+                    host = db_config.get("host", "localhost")
+                    port = int(db_config.get("port", 5432))
+                    user = db_config.get("username", "postgres")
+                    password = db_config.get("password", "")
+                    db = db_config.get("database", "data")
+
+                    conn = psycopg2.connect(
+                        host=host, port=port, user=user, password=password, dbname=db
+                    )
+                    conn.close()
+                    return {"success": True, "message": "PostgreSQL连接成功！"}
+                except ImportError:
+                    return {
+                        "success": False,
+                        "message": "缺少psycopg2模块，请安装：pip install psycopg2",
+                    }
+                except Exception as e:
+                    return {"success": False, "message": f"PostgreSQL连接失败：{str(e)}"}
+            else:
+                return {"success": False, "message": f"不支持的数据库类型：{db_type}"}
+        except Exception as e:
+            return {"success": False, "message": f"测试连接失败：{str(e)}"}
 
 
-# 创建全局配置管理器实例
 config_manager = ConfigManager()

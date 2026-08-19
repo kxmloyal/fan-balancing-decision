@@ -1,9 +1,12 @@
-import gc
 import json
+import logging
 import os
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
+
 
 # 数据库连接配置
 DB_CONNECTED = False
@@ -11,7 +14,7 @@ db = None
 UploadFile = None
 AnalysisResult = None
 
-print("数据处理模块初始化成功")
+logger.info("数据处理模块初始化成功")
 
 
 # ========== 基础工具函数 ==========
@@ -36,6 +39,30 @@ def allowed_file(filename: Optional[str], allowed_extensions: Union[List[str], s
         return ext in allowed_extensions
     except (IndexError, AttributeError):
         return False
+
+
+_MAGIC_BYTES_MAP = {
+    "csv": [b",", b";", b"\t"],
+    "xlsx": [b"PK\x03\x04"],
+    "xls": [b"\xd0\xcf\x11\xe0"],
+    "json": [b"[", b"{"],
+}
+
+
+def validate_magic_bytes(file_path: str, ext: str) -> bool:
+    ext_lower = ext.lower()
+    if ext_lower not in _MAGIC_BYTES_MAP:
+        return True
+    try:
+        with open(file_path, "rb") as f:
+            header = f.read(16)
+    except OSError:
+        return False
+    expected = _MAGIC_BYTES_MAP[ext_lower]
+    for magic in expected:
+        if header.startswith(magic):
+            return True
+    return False
 
 
 def read_multiformat_file(file_path: str) -> pd.DataFrame:
@@ -86,12 +113,8 @@ def read_multiformat_file(file_path: str) -> pd.DataFrame:
             nrows=max_rows,  # 仅读取需要的行数
             dtype=str,  # 先以字符串读取，减少内存占用
         ),
-        "xls": lambda: pd.read_excel(
-            file_path, header=0, engine="xlrd", nrows=max_rows, dtype=str
-        ),
-        "json": lambda: pd.read_json(file_path, dtype=str).head(
-            max_rows
-        ),  # 仅读取需要的行数
+        "xls": lambda: pd.read_excel(file_path, header=0, engine="xlrd", nrows=max_rows, dtype=str),
+        "json": lambda: pd.read_json(file_path, dtype=str).head(max_rows),  # 仅读取需要的行数
         "xml": lambda: pd.read_xml(file_path).head(max_rows),  # 仅读取需要的行数
     }
 
@@ -113,12 +136,10 @@ def read_multiformat_file(file_path: str) -> pd.DataFrame:
                 return df
             except UnicodeDecodeError:
                 continue
-            except Exception as e:
+            except (ValueError, IOError, TypeError):  # 捕获具体异常类型
                 continue
         # 所有编码都失败
-        raise Exception(
-            f"文件读取失败：无法识别文件编码，已尝试：{', '.join(encodings)}"
-        )
+        raise Exception(f"文件读取失败：无法识别文件编码，已尝试：{', '.join(encodings)}")
 
     # 处理其他格式文件
     elif ext in read_methods:
@@ -129,7 +150,7 @@ def read_multiformat_file(file_path: str) -> pd.DataFrame:
                 raise ValueError("当前pandas版本不支持XML格式，请升级到1.3.0或更高版本")
             else:
                 raise
-        except Exception as e:
+        except (ValueError, IOError, TypeError) as e:  # 捕获具体异常类型
             raise Exception(f"文件读取失败：{str(e)}")
     else:
         raise ValueError(f"不支持的文件格式：{ext}")
@@ -158,7 +179,7 @@ def parse_single_surface_file(file_path: str) -> Dict[str, List[float]]:
 
     try:
         df = read_multiformat_file(file_path)
-    except Exception as e:
+    except (ValueError, IOError, TypeError) as e:  # 捕获具体异常类型
         raise ValueError(f"读取文件失败：{str(e)}")
 
     # 检查DataFrame是否为空
@@ -230,53 +251,59 @@ def parse_single_surface_file(file_path: str) -> Dict[str, List[float]]:
 
     # 优化：及时释放内存
     del df, data_rows, data_array, speed_to_idx
-    gc.collect()
 
     return parsed_data
 
 
 # ========== 数据库持久化函数 ==========
-def save_upload_file(filename: str, file_path: str, file_size: int, user_id: Optional[str] = None) -> bool:
+def save_upload_file(
+    filename: str, file_path: str, file_size: int, user_id: Optional[str] = None
+) -> bool:
     """
     保存上传文件信息到数据库
-    
+
     Args:
         filename: 文件名
         file_path: 文件路径
         file_size: 文件大小
         user_id: 用户ID，可选
-        
+
     Returns:
         bool: 保存是否成功
     """
     if not DB_CONNECTED:
         return False
-    
+
     try:
-        file_ext = os.path.splitext(filename)[1].lower().lstrip('.')
+        file_ext = os.path.splitext(filename)[1].lower().lstrip(".")
         upload_file = UploadFile(
             filename=filename,
             file_path=file_path,
             file_size=file_size,
             user_id=user_id,
             file_type=file_ext,
-            status="uploaded"
+            status="uploaded",
         )
         db.session.add(upload_file)
         db.session.commit()
         return True
-    except Exception as e:
-        print(f"保存上传文件到数据库失败: {str(e)}")
+    except (ValueError, IOError, TypeError) as e:  # 捕获具体异常类型
+        logger.error(f"保存上传文件到数据库失败: {str(e)}")
         db.session.rollback()
         return False
 
 
-def save_analysis_result(user_id: Optional[str], fan_model: str, analysis_type: str, 
-                        input_files: List[Dict[str, Any]], output_files: List[Dict[str, Any]], 
-                        best_speed: Optional[str] = None) -> bool:
+def save_analysis_result(
+    user_id: Optional[str],
+    fan_model: str,
+    analysis_type: str,
+    input_files: List[Dict[str, Any]],
+    output_files: List[Dict[str, Any]],
+    best_speed: Optional[str] = None,
+) -> bool:
     """
     保存分析结果到数据库
-    
+
     Args:
         user_id: 用户ID，可选
         fan_model: 扇叶型号
@@ -284,13 +311,13 @@ def save_analysis_result(user_id: Optional[str], fan_model: str, analysis_type: 
         input_files: 输入文件列表
         output_files: 输出文件列表
         best_speed: 最优转速，可选
-        
+
     Returns:
         bool: 保存是否成功
     """
     if not DB_CONNECTED:
         return False
-    
+
     try:
         analysis_result = AnalysisResult(
             user_id=user_id,
@@ -299,12 +326,19 @@ def save_analysis_result(user_id: Optional[str], fan_model: str, analysis_type: 
             input_files=json.dumps(input_files),
             output_files=json.dumps(output_files),
             best_speed=best_speed,
-            status="completed"
+            status="completed",
         )
         db.session.add(analysis_result)
         db.session.commit()
+        # 失效仪表盘缓存（分析结果已变更）
+        try:
+            from app.utils.cache_utils import query_cache
+
+            query_cache.delete("dashboard_data")
+        except Exception:
+            pass
         return True
-    except Exception as e:
-        print(f"保存分析结果到数据库失败: {str(e)}")
+    except (ValueError, IOError, TypeError) as e:  # 捕获具体异常类型
+        logger.error(f"保存分析结果到数据库失败: {str(e)}")
         db.session.rollback()
         return False

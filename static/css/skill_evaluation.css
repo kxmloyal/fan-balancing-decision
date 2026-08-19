@@ -1,0 +1,158 @@
+/* ═══════════════════════════════════════════════════════════
+   技能评估页面样式
+   从 templates/skill_evaluation.html 内联CSS外部化
+   类名与原HTML/JS保持一致，避免破坏现有引用
+   ═══════════════════════════════════════════════════════════ */
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.main-content {
+    padding: 30px 0;
+}
+
+/* ── 技能等级徽章 ── */
+.skill-level-badge {
+    font-size: 1.5rem;
+    padding: 15px 30px;
+    border-radius: 50px;
+}
+
+.skill-expert {
+    background: linear-gradient(135deg, var(--accent-light, #fbbf24), var(--accent-color, #f59e0b));
+    color: var(--text-primary);
+}
+
+.skill-proficient {
+    background: linear-gradient(135deg, var(--success-color, #10b981), var(--secondary-dark, #059669));
+    color: white;
+}
+
+.skill-basic {
+    background: linear-gradient(135deg, var(--primary-color, #2563eb), var(--primary-dark, #1d4ed8));
+    color: white;
+}
+
+.skill-needs-improvement {
+    background: linear-gradient(135deg, var(--danger-color, #ef4444), var(--danger-dark, #dc2626));
+    color: white;
+}
+
+/* ── 统计卡片 ── */
+.stat-card {
+    text-align: center;
+    padding: 20px;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+
+/* ── 图表容器 ── */
+/* .chart-container 样式已在 style.css 统一定义 */
+
+/* ── 建议项 ── */
+.recommendation-item {
+    padding: 15px;
+    border-left: 4px solid var(--primary-color);
+    background-color: var(--background-light, #f8f9fa);
+    margin-bottom: 10px;
+    border-radius: var(--radius-sm, 4px);
+}
+
+.recommendation-item.warning {
+    border-left-color: var(--accent-color, #f39c12);
+}
+
+.recommendation-item.danger {
+    border-left-color: var(--danger-color);
+}
+
+.recommendation-item.success {
+    border-left-color: var(--secondary-color, #2ecc71);
+}
+
+/* ── 加载旋转器 ── */
+.loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 50px;
+}
+
+.loading-spinner.active {
+    display: block;
+}
+
+/* ── 结果区域 ── */
+.result-section {
+    display: none;
+}
+
+.result-section.active {
+    display: block;
+}
+
+/* ── 数据质量指示器 ── */
+.data-quality-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.quality-excellent {
+    background-color: var(--secondary-color, #2ecc71);
+}
+
+.quality-good {
+    background-color: var(--primary-color, #2563eb);
+}
+
+.quality-average {
+    background-color: var(--accent-color, #f39c12);
+}
+
+.quality-poor {
+    background-color: var(--danger-color);
+}
+
+/* ── 异常高亮 ── */
+.anomaly-highlight {
+    background-color: rgba(var(--bs-warning-rgb), 0.2);
+    font-weight: bold;
+}
+
+/* ── 趋势颜色 ── */
+.trend-up {
+    color: var(--danger-color);
+}
+
+.trend-down {
+    color: var(--secondary-color, #2ecc71);
+}
+
+.trend-stable {
+    color: var(--primary-color);
+}
+
+/* ── 响应式 ── */
+@media (max-width: 768px) {
+    .stat-value {
+        font-size: 1.5rem;
+    }
+
+    .skill-level-badge {
+        font-size: 1.2rem;
+        padding: 10px 20px;
+    }
+}
