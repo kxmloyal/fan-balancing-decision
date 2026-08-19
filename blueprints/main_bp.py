@@ -366,6 +366,7 @@ def handle_chart_update_request():
             has_p2=has_p2,
             has_st=has_st,
             chart_layout=chart_layout,
+            chart_type_config=CHART_TYPE_CONFIG,
         )
         # 返回包含图表HTML的JSON响应
         return jsonify(

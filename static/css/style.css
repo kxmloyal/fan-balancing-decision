@@ -784,26 +784,6 @@ hr {
     border-radius: var(--radius-sm);
 }
 
-.chart-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-.chart-col {
-    flex: 1;
-    min-width: 300px;
-}
-
-.chart-stacked .chart-container {
-    margin-bottom: 30px;
-}
-
-.chart-parallel .chart-col {
-    display: flex;
-    flex-direction: column;
-}
-
 .export-buttons {
     margin-top: 20px;
 }
@@ -1245,12 +1225,6 @@ button, .btn {
         margin-bottom: 15px;
     }
     
-    /* 响应式图表布局 */
-    .chart-col {
-        min-width: auto;
-        margin-bottom: 15px;
-    }
-    
     /* 帮助模态框调整 */
     #helpGuideModal .modal-dialog {
         max-width: 100%;
@@ -1317,9 +1291,6 @@ button, .btn {
     .container {
         max-width: 1320px;
     }
-    .chart-col {
-        min-width: 350px;
-    }
     .modal-chart-container iframe {
         height: 75vh;
     }
@@ -1329,9 +1300,6 @@ button, .btn {
     .container {
         max-width: 1520px;
     }
-    .chart-col {
-        min-width: 400px;
-    }
     .modal-chart-container iframe {
         height: 80vh;
     }
@@ -1340,9 +1308,6 @@ button, .btn {
 @media (min-width: 1900px) {
     .container {
         max-width: 1720px;
-    }
-    .chart-col {
-        min-width: 450px;
     }
     .modal-chart-container iframe {
         height: 85vh;
@@ -1426,17 +1391,6 @@ button, .btn {
     width: 100% !important;
     height: 100% !important;
     min-height: 400px !important;
-}
-
-/* 并列显示的图表响应式调整 */
-@media (max-width: 991px) {
-    .chart-col {
-        margin-bottom: 20px;
-    }
-    
-    .chart-col .plotly-chart {
-        min-height: 350px !important;
-    }
 }
 
 /* 确保图表容器在模态框中正确显示 */

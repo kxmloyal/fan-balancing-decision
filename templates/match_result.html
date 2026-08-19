@@ -345,11 +345,11 @@
                 
                 <!-- 并列显示图表区域 -->
                 <div class="chart-parallel" id="parallelChartContainer" style="display: none;">
-                    <div class="chart-row">
+                    <div class="row g-3">
                         {% if has_matched %}
                         <!-- P1面图 -->
                         {% if plots and plots.p1 and has_p1 %}
-                        <div class="chart-col">
+                        <div class="col-lg-4 col-md-6 col-sm-12">
                             <div class="mb-5">
                                 <h6 class="text-primary mb-3"><i class="bi bi-bar-chart me-2"></i>P1面数据图表（并列显示）</h6>
                                 <div class="chart-container h-100">
@@ -367,7 +367,7 @@
 
                         <!-- P2面图 -->
                         {% if plots and plots.p2 and has_p2 %}
-                        <div class="chart-col">
+                        <div class="col-lg-4 col-md-6 col-sm-12">
                             <div class="mb-5">
                                 <h6 class="text-primary mb-3"><i class="bi bi-bar-chart me-2"></i>P2面数据图表（并列显示）</h6>
                                 <div class="chart-container h-100">
@@ -385,7 +385,7 @@
 
                         <!-- ST面图 -->
                         {% if plots and plots.sum and has_st %}
-                        <div class="chart-col">
+                        <div class="col-lg-4 col-md-6 col-sm-12">
                             <div class="mb-5">
                                 <h6 class="text-primary mb-3"><i class="bi bi-bar-chart me-2"></i>ST面数据图表（并列显示）</h6>
                                 <div class="chart-container h-100">
@@ -404,8 +404,9 @@
                     {% endif %}
                     
                     <!-- 未匹配P1数据图表 -->
+                    <div class="row g-3">
                     {% if has_unmatched_p1 and plots and plots.p1_unmatched %}
-                    <div class="chart-col">
+                    <div class="col-lg-6 col-md-6 col-sm-12">
                         <div class="mb-5">
                             <h6 class="text-primary mb-3"><i class="bi bi-x-circle me-2"></i>未匹配P1转速数据图表（并列显示）</h6>
                             <div class="chart-container h-100">
@@ -423,7 +424,7 @@
                     
                     <!-- 未匹配P2数据图表 -->
                     {% if has_unmatched_p2 and plots and plots.p2_unmatched %}
-                    <div class="chart-col">
+                    <div class="col-lg-6 col-md-6 col-sm-12">
                         <div class="mb-5">
                             <h6 class="text-primary mb-3"><i class="bi bi-x-circle me-2"></i>未匹配P2转速数据图表（并列显示）</h6>
                             <div class="chart-container h-100">
@@ -438,6 +439,7 @@
                         </div>
                     </div>
                     {% endif %}
+                    </div>
                 </div>
                 
                 <!-- 导出报告功能 -->

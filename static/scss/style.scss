@@ -681,26 +681,6 @@ h2, h3, h4, h5, h6 {
     border-radius: 5px;
 }
 
-.chart-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-.chart-col {
-    flex: 1;
-    min-width: 300px;
-}
-
-.chart-stacked .chart-container {
-    margin-bottom: 30px;
-}
-
-.chart-parallel .chart-col {
-    display: flex;
-    flex-direction: column;
-}
-
 .export-buttons {
     margin-top: 20px;
 }
@@ -709,25 +689,6 @@ h2, h3, h4, h5, h6 {
 .chart-type-badge {
     margin-right: 5px;
     margin-bottom: 5px;
-}
-
-// 响应式图表容器
-@media (min-width: 1400px) {
-    .chart-col {
-        min-width: 350px;
-    }
-}
-
-@media (min-width: 1600px) {
-    .chart-col {
-        min-width: 400px;
-    }
-}
-
-@media (min-width: 1900px) {
-    .chart-col {
-        min-width: 450px;
-    }
 }
 
 // 模态框最大化支持
@@ -1274,12 +1235,6 @@ h2, h3, h4, h5, h6 {
         margin-bottom: 15px;
     }
     
-    /* 响应式图表布局 */
-    .chart-col {
-        min-width: auto;
-        margin-bottom: 15px;
-    }
-    
     /* 帮助模态框调整 */
     #helpGuideModal .modal-dialog {
         max-width: 100%;
@@ -1340,26 +1295,17 @@ h2, h3, h4, h5, h6 {
     .container {
         max-width: 1320px;
     }
-    .chart-col {
-        min-width: 350px;
-    }
 }
 
 @media (min-width: 1600px) {
     .container {
         max-width: 1520px;
     }
-    .chart-col {
-        min-width: 400px;
-    }
 }
 
 @media (min-width: 1900px) {
     .container {
         max-width: 1720px;
-    }
-    .chart-col {
-        min-width: 450px;
     }
 }
 
@@ -1423,17 +1369,6 @@ h2, h3, h4, h5, h6 {
 @media (max-width: 480px) {
     .plotly-chart {
         height: 300px;
-    }
-}
-
-/* 并列显示的图表响应式调整 */
-@media (max-width: 991px) {
-    .chart-col {
-        margin-bottom: 20px;
-    }
-    
-    .chart-col .plotly-chart {
-        height: 350px;
     }
 }
 

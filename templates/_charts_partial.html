@@ -11,52 +11,14 @@
     <small class="text-muted ms-2" id="yaxisAlignHint">点击后所有图表P1/P2/ST面统一Y轴量程与刻度间隔</small>
 </div>
 
-<!-- 统一的图表类型配置 -->
-{% set chart_type_config = chart_type_config or {
-    'trend': {
-        'name': '趋势图',
-        'icon': 'bi-trend-up',
-        'color': 'text-success'
-    },
-    'scatter': {
-        'name': '散点图',
-        'icon': 'bi-scatter',
-        'color': 'text-info'
-    },
-    'box': {
-        'name': '箱线图',
-        'icon': 'bi-box-seam',
-        'color': 'text-primary'
-    },
-    'violin': {
-        'name': '小提琴图',
-        'icon': 'bi-music-note-list',
-        'color': 'text-purple'
-    },
-    'heatmap': {
-        'name': '热力图',
-        'icon': 'bi-thermometer-half',
-        'color': 'text-warning'
-    },
-    'histogram': {
-        'name': '直方图',
-        'icon': 'bi-bar-chart-line',
-        'color': 'text-danger'
-    },
-    'radar': {
-        'name': '雷达图',
-        'icon': 'bi-radar',
-        'color': 'text-dark'
-    },
-    '3d': {
-        'name': '3D散点图',
-        'icon': 'bi-cube',
-        'color': 'text-secondary'
-    }
-} %}
+<!-- 图表类型配置统一来自后端 chart_style_config.CHART_TYPE_CONFIG -->
+{% set chart_type_config = chart_type_config or {} %}
 
 <!-- 图表区域 -->
-<div class="chart-stacked {% if chart_layout == 'parallel' %}d-none{% endif %}">
+{% if chart_layout != 'parallel' %}
+<div class="chart-stacked">
+    <div class="card shadow-md">
+        <div class="card-body">
     <h6 class="text-primary mb-3"><i class="bi bi-bar-chart me-2"></i>数据图表</h6>
     
     <!-- P1面图 -->
@@ -167,24 +129,31 @@
         </div>
         <hr>
     {% endif %}
+        </div>
+    </div>
 </div>
+{% endif %}
 
 <!-- 并列显示图表区域 -->
-<div class="chart-parallel {% if chart_layout != 'parallel' %}d-none{% endif %}">
+{% if chart_layout == 'parallel' %}
+<div class="chart-parallel">
+    <div class="card shadow-md">
+        <div class="card-body">
     <h6 class="text-primary mb-3"><i class="bi bi-bar-chart me-2"></i>数据图表（并列显示）</h6>
-    <div class="chart-row row">
+    <div class="row g-3">
         <!-- 图表容器将根据实际数量动态调整大小 -->
-        {% set chart_count = 0 %}
-        {% if plots.p1 and has_p1 %}{% set chart_count = chart_count + 1 %}{% endif %}
-        {% if plots.p2 and has_p2 %}{% set chart_count = chart_count + 1 %}{% endif %}
-        {% if plots.sum and has_st %}{% set chart_count = chart_count + 1 %}{% endif %}
-        {% if plots.single %}{% set chart_count = chart_count + 1 %}{% endif %}
-        
-        {% set col_class = "col-lg-" + (12 // chart_count)|string + " col-md-6 col-sm-12 mb-4" %}
+        {% set ns = namespace(count=0) %}
+        {% if plots.p1 and has_p1 %}{% set ns.count = ns.count + 1 %}{% endif %}
+        {% if plots.p2 and has_p2 %}{% set ns.count = ns.count + 1 %}{% endif %}
+        {% if plots.sum and has_st %}{% set ns.count = ns.count + 1 %}{% endif %}
+        {% if plots.single %}{% set ns.count = ns.count + 1 %}{% endif %}
+
+        {% if ns.count == 0 %}{% set ns.count = 1 %}{% endif %}
+        {% set col_class = "col-lg-" + (12 // ns.count)|string + " col-md-6 col-sm-12 mb-4" %}
         
         <!-- P1面图 -->
         {% if plots and plots.p1 and has_p1 %}
-        <div class="chart-col {{ col_class }}">
+        <div class="{{ col_class }}">
             <h6 class="font-weight-bold">P1面不平衡量</h6>
             {% if plots.p1 is mapping %}
                 {% for chart_type, chart_files in plots.p1.items() %}
@@ -210,7 +179,7 @@
         
         <!-- P2面图 -->
         {% if plots and plots.p2 and has_p2 %}
-        <div class="chart-col {{ col_class }}">
+        <div class="{{ col_class }}">
             <h6 class="font-weight-bold">P2面不平衡量</h6>
             {% if plots.p2 is mapping %}
                 {% for chart_type, chart_files in plots.p2.items() %}
@@ -236,7 +205,7 @@
         
         <!-- ST面图（仅当上传了ST面时显示） -->
         {% if plots and plots.sum and has_st %}
-        <div class="chart-col {{ col_class }}">
+        <div class="{{ col_class }}">
             <h6 class="font-weight-bold">ST面不平衡量</h6>
             {% if plots.sum is mapping %}
                 {% for chart_type, chart_files in plots.sum.items() %}
@@ -262,7 +231,7 @@
         
         <!-- 单面图（仅上传一个面时） -->
         {% if plots and plots.single %}
-        <div class="chart-col {{ col_class }}">
+        <div class="{{ col_class }}">
             {% set single_surface_title = 'P1面不平衡量' if has_p1 else ('P2面不平衡量' if has_p2 else 'ST面不平衡量') %}
             <h6 class="font-weight-bold">{{ single_surface_title }}</h6>
             {% if plots.single is mapping %}
@@ -287,7 +256,10 @@
         </div>
         {% endif %}
     </div>
+        </div>
+    </div>
 </div>
+{% endif %}
 
 <!-- Plotly图表数据初始化脚本 -->
 <script>

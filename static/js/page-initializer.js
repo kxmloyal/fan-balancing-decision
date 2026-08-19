@@ -125,15 +125,6 @@ function initChartSettingsForm() {
     const statusText = document.getElementById('statusText');
     const statusProgress = document.getElementById('statusProgress');
     const statusDetails = document.getElementById('statusDetails');
-    // 找到图表区域的容器，确保只更新图表区域
-    let chartContainer = null;
-    const chartStacked = document.querySelector('.chart-stacked');
-    const chartParallel = document.querySelector('.chart-parallel');
-    if (chartStacked) {
-        chartContainer = chartStacked;
-    } else if (chartParallel) {
-        chartContainer = chartParallel;
-    }
     
     // 从localStorage加载保存的图表类型选择
     function loadSavedChartSettings() {
@@ -163,21 +154,8 @@ function initChartSettingsForm() {
     }
     
     if (chartSettingsForm) {
-        // 初始化默认设置，确保只有箱线图被勾选且图表布局选择堆叠显示
-        const checkboxes = document.querySelectorAll('.chart-type-checkbox');
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = (checkbox.value === 'box');
-        });
-        
-        const layoutRadios = document.querySelectorAll('input[name="chartLayout"]');
-        layoutRadios.forEach(radio => {
-            radio.checked = (radio.value === 'stacked');
-        });
-        
-        // 保存默认设置到localStorage
-        localStorage.setItem('selectedChartTypes', JSON.stringify(['box']));
-        localStorage.setItem('selectedChartLayout', 'stacked');
-        
+        // 表单勾选状态以后端模板渲染（saved_results.chart_types）为准，不强制重置；
+        // 用户历史选择由 loadSavedChartSettings 从 localStorage 恢复
         chartSettingsForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -293,32 +271,12 @@ function initChartSettingsForm() {
                             const tempContainer = document.createElement('div');
                             tempContainer.innerHTML = data.charts_html;
                             
-                            // 找到临时容器中的两个图表区域
-                            const tempStackedArea = tempContainer.querySelector('.chart-stacked');
-                            const tempParallelArea = tempContainer.querySelector('.chart-parallel');
-                            
-                            // 找到当前页面中的两个图表区域
-                            const currentStackedArea = analysisResultSection.querySelector('.chart-stacked');
-                            const currentParallelArea = analysisResultSection.querySelector('.chart-parallel');
-                            
-                            // 替换堆叠显示区域
-                            if (tempStackedArea) {
-                                if (currentStackedArea) {
-                                    currentStackedArea.parentNode.replaceChild(tempStackedArea, currentStackedArea);
-                                } else {
-                                    // 如果当前页面中没有堆叠显示区域，则添加它
-                                    analysisResultSection.appendChild(tempStackedArea);
-                                }
-                            }
-                            
-                            // 替换并列显示区域
-                            if (tempParallelArea) {
-                                if (currentParallelArea) {
-                                    currentParallelArea.parentNode.replaceChild(tempParallelArea, currentParallelArea);
-                                } else {
-                                    // 如果当前页面中没有并列显示区域，则添加它
-                                    analysisResultSection.appendChild(tempParallelArea);
-                                }
+                            // 新 HTML 仅含当前布局的单一图表区域（stacked 或 parallel 二选一）
+                            const newChartArea = tempContainer.querySelector('.chart-stacked, .chart-parallel');
+                            // 移除页面中所有旧图表区域（含切换布局后残留的另一布局）
+                            analysisResultSection.querySelectorAll('.chart-stacked, .chart-parallel').forEach(el => el.remove());
+                            if (newChartArea) {
+                                analysisResultSection.appendChild(newChartArea);
                             }
                             
                             // 恢复滚动位置
