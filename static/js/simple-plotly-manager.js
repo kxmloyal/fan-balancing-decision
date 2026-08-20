@@ -619,6 +619,25 @@ class SimplePlotlyManager {
                 plotlyData = this.createDefaultData(chartType);
             }
             
+            // 箱线/小提琴类图表收紧类别轴：Plotly 默认会在末类后 autoexpand，
+            // 与左侧 Y 轴刻度相比右侧显得过空，这里显式限定 range 并收小右 margin
+            if (chartType === 'box' || chartType === 'violin') {
+                var catSet = [];
+                plotlyData.forEach(function (t) {
+                    if (Array.isArray(t.x)) {
+                        t.x.forEach(function (x) {
+                            if (x !== null && x !== undefined && catSet.indexOf(x) === -1) catSet.push(x);
+                        });
+                    }
+                });
+                if (catSet.length) {
+                    plotlyLayout.xaxis = plotlyLayout.xaxis || {};
+                    plotlyLayout.xaxis.type = 'category';
+                    plotlyLayout.xaxis.range = [-0.5, catSet.length - 0.5];
+                    plotlyLayout.margin = plotlyLayout.margin || {};
+                    plotlyLayout.margin.r = 10;
+                }
+            }
             // 设置布局尺寸
             plotlyLayout.width = container.clientWidth;
             plotlyLayout.height = container.clientHeight;

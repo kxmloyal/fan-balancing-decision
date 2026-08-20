@@ -25,63 +25,97 @@ def test_validate_and_align_data():
         p1_samples, p2_samples, st_samples
     )
 
-    # 验证结果
-    assert len(p1_aligned) == 30  # 应该填充到30个数据点
-    assert len(p2_aligned) == 30
-    assert len(st_aligned) == 30
+    # 对齐到三面最小长度
+    assert len(p1_aligned) == 5
+    assert len(p2_aligned) == 5
+    assert len(st_aligned) == 5
+    assert data_info["aligned_length"] == 5
 
-    # 验证前5个数据点保持不变
+    # 验证数据保持不变
     for i in range(5):
         assert p1_aligned[i] == p1_samples[i]
         assert p2_aligned[i] == p2_samples[i]
         assert st_aligned[i] == st_samples[i]
 
-    # 验证剩余数据点是NaN
-    for i in range(5, 30):
-        assert (
-            isinstance(p1_aligned[i], float)
-            and isinstance(p2_aligned[i], float)
-            and isinstance(st_aligned[i], float)
-        )
-
     # 测试没有ST面数据的情况
     p1_aligned, p2_aligned, st_aligned, data_info = validate_and_align_data(p1_samples, p2_samples)
 
-    # 验证结果
-    assert len(p1_aligned) == 30
-    assert len(p2_aligned) == 30
-    assert len(st_aligned) == 30
+    # ST面为空列表，P1/P2对齐到最小长度
+    assert len(p1_aligned) == 5
+    assert len(p2_aligned) == 5
+    assert st_aligned == []
 
-    # 测试数据长度不一致的情况
+    # 测试数据长度不一致的情况（P1更长，截断到P2长度）
     p1_samples_long = p1_samples * 2  # 10个数据点
     p1_aligned, p2_aligned, st_aligned, data_info = validate_and_align_data(
         p1_samples_long, p2_samples
     )
 
-    # 验证结果
-    assert len(p1_aligned) == 30
-    assert len(p2_aligned) == 30
-    assert len(st_aligned) == 30
+    assert len(p1_aligned) == 5
+    assert len(p2_aligned) == 5
+    assert data_info["aligned_length"] == 5
 
     # 验证前5个数据点保持不变
     for i in range(5):
         assert p1_aligned[i] == p1_samples_long[i]
         assert p2_aligned[i] == p2_samples[i]
 
+    # 测试NaN过滤：P1含None/NaN时被剔除
+    p1_with_nan = [17.2, None, 16.8, float("nan"), 16.9]
+    p1_aligned, p2_aligned, st_aligned, data_info = validate_and_align_data(
+        p1_with_nan, p2_samples
+    )
+
+    assert len(p1_aligned) == 3
+    assert data_info["p1_has_nan"] is True
+
 
 def test_generate_data_warning():
     """测试generate_data_warning函数"""
-    # 测试正常数据信息 - 应该返回空字符串
-    data_info = {"p1_valid": True, "p2_valid": True, "st_valid": True, "is_complete": True}
+    # 测试正常数据 - 应该返回空字符串
+    data_info = {
+        "aligned_length": 10,
+        "filtered_p1_length": 10,
+        "filtered_p2_length": 10,
+        "p1_has_nan": False,
+        "p2_has_nan": False,
+        "st_has_nan": False,
+    }
     warning = generate_data_warning(data_info, "3000rpm")
-    assert warning == ""  # 应该没有警告
+    assert warning == ""  # 样本充足且无NaN、无长度差异
 
-    # 测试无效数据信息 - 应该返回空字符串（因为已取消警告）
-    data_info = {"p1_valid": False, "p2_valid": False, "st_valid": True, "is_complete": False}
+    # 样本数不足时给出警告
+    data_info = {
+        "aligned_length": 5,
+        "filtered_p1_length": 5,
+        "filtered_p2_length": 5,
+        "p1_has_nan": False,
+        "p2_has_nan": False,
+        "st_has_nan": False,
+    }
     warning = generate_data_warning(data_info, "3000rpm")
-    assert warning == ""  # 应该没有警告，因为已取消所有数据警告
+    assert "样本数较少" in warning
 
-    # 测试部分无效数据信息 - 应该返回空字符串（因为已取消警告）
-    data_info = {"p1_valid": True, "p2_valid": False, "st_valid": True, "is_complete": True}
+    # P1含空值时给出警告
+    data_info = {
+        "aligned_length": 10,
+        "filtered_p1_length": 8,
+        "filtered_p2_length": 10,
+        "p1_has_nan": True,
+        "p2_has_nan": False,
+        "st_has_nan": False,
+    }
     warning = generate_data_warning(data_info, "3000rpm")
-    assert warning == ""  # 应该没有警告，因为已取消所有数据警告
+    assert "P1面数据包含空值" in warning
+
+    # P1/P2长度不一致时给出警告
+    data_info = {
+        "aligned_length": 10,
+        "filtered_p1_length": 10,
+        "filtered_p2_length": 8,
+        "p1_has_nan": False,
+        "p2_has_nan": False,
+        "st_has_nan": False,
+    }
+    warning = generate_data_warning(data_info, "3000rpm")
+    assert "P1和P2面数据长度不一致" in warning

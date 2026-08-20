@@ -1,38 +1,5 @@
 // 页面初始化脚本
 
-// 图表懒加载功能
-function initChartLazyLoading() {
-    // 定义图表容器选择器
-    const chartContainers = document.querySelectorAll('.plotly-chart');
-    
-    // 直接初始化所有图表，不使用Intersection Observer
-    chartContainers.forEach(container => {
-        const chartId = container.getAttribute('id');
-        if (chartId && typeof plotlyManager !== 'undefined') {
-            try {
-                const chartType = container.getAttribute('data-chart-type');
-                const chartTitle = container.getAttribute('data-chart-title');
-                const chartColor = container.getAttribute('data-chart-color');
-                const chartDataRaw = container.getAttribute('data-chart-data');
-                
-                
-                // 处理HTML实体编码
-                const chartDataUnescaped = chartDataRaw.replace(/&quot;/g, '"').replace(/&amp;/g, '&');
-                const chartData = JSON.parse(chartDataUnescaped);
-                
-                
-                plotlyManager.initChart(chartId, chartType, chartData, {
-                    title: chartTitle,
-                    color: chartColor
-                });
-            } catch (error) {
-                console.error('初始化图表失败:', error);
-                console.error('图表数据:', container.getAttribute('data-chart-data'));
-            }
-        }
-    });
-}
-
 // 初始化配色方案切换功能
 function initColorSchemeSwitcher() {
     const colorSchemeRadios = document.querySelectorAll('input[name="colorScheme"]');
@@ -126,33 +93,6 @@ function initChartSettingsForm() {
     const statusProgress = document.getElementById('statusProgress');
     const statusDetails = document.getElementById('statusDetails');
     
-    // 从localStorage加载保存的图表类型选择
-    function loadSavedChartSettings() {
-        try {
-            const savedTypes = localStorage.getItem('selectedChartTypes');
-            const savedLayout = localStorage.getItem('selectedChartLayout');
-            
-            if (savedTypes) {
-                const selectedTypes = JSON.parse(savedTypes);
-                // 应用保存的图表类型选择
-                const checkboxes = document.querySelectorAll('.chart-type-checkbox');
-                checkboxes.forEach(checkbox => {
-                    checkbox.checked = selectedTypes.includes(checkbox.value);
-                });
-            }
-            
-            if (savedLayout) {
-                // 应用保存的图表布局选择
-                const layoutRadios = document.querySelectorAll('input[name="chartLayout"]');
-                layoutRadios.forEach(radio => {
-                    radio.checked = (radio.value === savedLayout);
-                });
-            }
-        } catch (error) {
-            console.error('加载保存的图表设置失败:', error);
-        }
-    }
-    
     if (chartSettingsForm) {
         // 表单勾选状态以后端模板渲染（saved_results.chart_types）为准，不强制重置；
         // 用户历史选择由 loadSavedChartSettings 从 localStorage 恢复
@@ -218,6 +158,7 @@ function initChartSettingsForm() {
             requestData.append('chartLayout', selectedLayout);
             
             // 保存用户的图表类型选择到localStorage，确保刷新后保持选择状态
+            localStorage.setItem('chartSettingsVersion', CHART_SETTINGS_VERSION);
             localStorage.setItem('selectedChartTypes', JSON.stringify(selectedChartTypes));
             localStorage.setItem('selectedChartLayout', selectedLayout);
             
@@ -361,6 +302,7 @@ function initChartTypeSelectionListener() {
                         selectedChartTypes.push(cb.value);
                     }
                 });
+                localStorage.setItem('chartSettingsVersion', CHART_SETTINGS_VERSION);
                 localStorage.setItem('selectedChartTypes', JSON.stringify(selectedChartTypes));
             });
         });
@@ -369,6 +311,7 @@ function initChartTypeSelectionListener() {
         layoutRadios.forEach(radio => {
             radio.addEventListener('change', function() {
                 if (this.checked) {
+                    localStorage.setItem('chartSettingsVersion', CHART_SETTINGS_VERSION);
                     localStorage.setItem('selectedChartLayout', this.value);
                 }
             });
@@ -376,11 +319,26 @@ function initChartTypeSelectionListener() {
     }, 200);
 }
 
+// localStorage 状态版本：前端布局/类型逻辑变更后递增，
+// 旧版本残留状态（如曾强制写入选中的 'stacked'）直接丢弃，防止覆盖后端渲染结果
+const CHART_SETTINGS_VERSION = 'v2';
+
+function isChartSettingsVersionValid() {
+    return localStorage.getItem('chartSettingsVersion') === CHART_SETTINGS_VERSION;
+}
+
 // 独立的loadSavedChartSettings函数，确保在任何情况下都会执行
 function loadSavedChartSettings() {
     try {
         const savedTypes = localStorage.getItem('selectedChartTypes');
         const savedLayout = localStorage.getItem('selectedChartLayout');
+        
+        // 版本不符（旧逻辑写入的残留状态）一律丢弃，以服务端模板渲染状态为准
+        if (!isChartSettingsVersionValid()) {
+            localStorage.removeItem('selectedChartTypes');
+            localStorage.removeItem('selectedChartLayout');
+            return;
+        }
         
         if (savedTypes) {
             const selectedTypes = JSON.parse(savedTypes);

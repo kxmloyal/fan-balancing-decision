@@ -9,6 +9,7 @@ import io
 import json
 import logging
 import os
+import re
 import zipfile
 from datetime import datetime
 from urllib.parse import quote
@@ -27,24 +28,19 @@ from flask import (
 from app.utils.api_response import ApiResponse
 from app.utils.cache_utils import file_cache, query_cache
 
-_db_resources = None
-
-
 def _get_db_resources():
-    global _db_resources
-    if _db_resources is None:
-        try:
-            from app import db as _db
-            from db_models import DB_CONNECTED
-            from db_models import Output as _Output
+    try:
+        # 直接 import db_models（app/__init__.py 的 __getattr__ 仅桥接 "app"，
+        # from app import db 恒抛 AttributeError，导致 DB 分支永远不可达）
+        # 不缓存结果：settings 页保存配置并重载后 DB_CONNECTED 会变为 True，
+        # 缓存 (None, None) 会导致 DB 分支永不生效
+        from db_models import DB_CONNECTED, Output as _Output, db as _db
 
-            if not DB_CONNECTED:
-                _db_resources = (None, None)
-            else:
-                _db_resources = (_db, _Output)
-        except Exception:
-            _db_resources = (None, None)
-    return _db_resources
+        if not DB_CONNECTED or _db is None:
+            return (None, None)
+        return (_db, _Output)
+    except Exception:
+        return (None, None)
 
 
 logger = logging.getLogger(__name__)
@@ -55,6 +51,7 @@ INTERNAL_METADATA_FILES = frozenset(
     {
         "export_history.json",
         "shareable_links.json",
+        "model_monitor.json",
     }
 )
 
@@ -146,6 +143,25 @@ def _load_export_history():
     return []
 
 
+_REPORT_TS_RE = re.compile(r"_(\d{8})_(\d{6})\.(?:html|pdf)$")
+
+
+def _parse_report_timestamp(filename):
+    """解析报告文件名内嵌的导出时间戳（9324_动平衡分析报告_20260820_202822.html → 2026-08-20 20:28:22）。
+
+    ctime 是 inode 变更时间，复制/移动/权限修改会统一触碰导致失真，
+    而文件名内嵌时间戳（YYYYMMDD_HHMMSS）才是真实导出时刻。
+    解析失败（非报告文件或格式异常）返回 None，由调用方回退 ctime/mtime。
+    """
+    m = _REPORT_TS_RE.search(filename)
+    if not m:
+        return None
+    try:
+        return datetime.strptime(f"{m.group(1)}_{m.group(2)}", "%Y%m%d_%H%M%S")
+    except ValueError:
+        return None
+
+
 def _list_filesystem_files(filters=None):
     output_folder = current_app.config["OUTPUT_FOLDER"]
     outputs_list = []
@@ -164,7 +180,9 @@ def _list_filesystem_files(filters=None):
                 filename = entry
                 file_type = filename.split(".")[-1].lower() if "." in filename else "unknown"
                 file_size = os.path.getsize(entry_path)
-                created_at = datetime.fromtimestamp(os.path.getctime(entry_path))
+                created_at = _parse_report_timestamp(filename) or datetime.fromtimestamp(
+                    os.path.getmtime(entry_path)
+                )
                 updated_at = datetime.fromtimestamp(os.path.getmtime(entry_path))
 
                 fan_model = model_name or _detect_fan_model_from_path(
@@ -688,41 +706,6 @@ def _delete_by_hash_file_id(file_id, output_folder):
                         os.remove(sub_path)
                         return True
     return False
-
-
-@outputs_bp.route("/delete_output_file/<int:output_id>", methods=["POST"])
-def delete_output_file(output_id):
-    try:
-        if current_app.config.get("DATABASE_ERROR"):
-            output_folder = current_app.config["OUTPUT_FOLDER"]
-            file_id = str(output_id)
-            if _delete_by_hash_file_id(file_id, output_folder):
-                return ApiResponse.success(message="文件删除成功")
-            return ApiResponse.error("文件不存在"), 404
-
-        _db, Output = _get_db_resources()
-        if _db is None or Output is None:
-            return jsonify({"success": False, "message": "数据库连接失败，无法删除文件"}), 500
-
-        output = Output.query.get(output_id)
-        if not output:
-            return ApiResponse.error("文件不存在"), 404
-
-        file_path = output.file_path
-
-        _db.session.delete(output)
-        _db.session.commit()
-
-        if file_path and os.path.exists(file_path):
-            os.remove(file_path)
-
-        file_cache.clear()  # 清除文件列表缓存
-        query_cache.delete("ml_models_db_rows")  # 失效 ML 型号列表 DB 查询缓存
-        return ApiResponse.success(message="文件删除成功")
-    except Exception as e:
-        logger.error("删除文件失败: %s", str(e))
-        _db.session.rollback()
-        return ApiResponse.error("删除文件失败，请稍后重试"), 500
 
 
 @outputs_bp.route("/api/outputs/list", methods=["GET"])

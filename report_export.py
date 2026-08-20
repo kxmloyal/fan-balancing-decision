@@ -3,9 +3,10 @@
 """
 兼容转发层 —— 指向 services.report_exporter 三层委派架构
 
-P2-14 方案 A：将原 1350 行单体拆分为三模块：
-  services/report_exporter.py     — ReportExporter 核心 + HtmlExporter + ShareLinkManager
-  services/report_html_builder.py — ReportHtmlBuilder (HTML 报告生成)
+P2-14 方案 A：将原 1350 行单体拆分为多模块：
+  services/report_exporter.py     — ReportExporter 核心 + HtmlExporter
+  services/share_link_manager.py  — ShareLinkManager 分享链接管理（第42轮拆分）
+  services/report_renderer.py     — ReportRenderer (数据驱动 HTML 报告生成)
   services/report_data_export.py  — ReportDataExporter (CSV/JSON/Excel)
 
 本文件保留根目录兼容性，所有 from report_export import Xxx 自动转发到新模块。

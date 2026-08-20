@@ -92,7 +92,7 @@ class GuideManager {
                 title: '导出报告',
                 content: '分析完成后，您可以将结果导出为HTML、PDF、CSV等多种格式。',
                 position: 'top',
-                element: 'a[href*="export_report"]'
+                element: '.js-export-link'
             },
             {
                 id: 'dashboard',

@@ -715,6 +715,15 @@
             const loadingSpinner = document.getElementById('loadingSpinner');
             const resultSection = document.getElementById('resultSection');
 
+            // 声明提升到 handler 作用域：catch 块无法访问 try 块内的 let（块级作用域），
+            // 否则 catch 路径会抛 ReferenceError（progressFill is not defined）
+            let progressBar = null;
+            let progressDiv = null;
+            let progressFill = null;
+            let progressInterval = null;
+            let progressPercent = 0;
+            let requestPhase = '';
+
             try {
                 clearErrorAlert();
 
@@ -729,11 +738,11 @@
                 loadingSpinner.classList.add('active');
                 resultSection.classList.remove('active');
 
-                let progressBar = document.getElementById('analysisProgressBar');
-                let progressDiv = document.getElementById('analysisProgress');
-                let progressFill = null;
-                let progressInterval = null;
-                let progressPercent = 0;
+                progressBar = document.getElementById('analysisProgressBar');
+                progressDiv = document.getElementById('analysisProgress');
+                progressFill = null;
+                progressInterval = null;
+                progressPercent = 0;
 
                 if (progressDiv) {
                     progressDiv.classList.remove('d-none');
@@ -758,7 +767,7 @@
                 const fanModel = document.getElementById('fanModel').value;
                 const testDataText = document.getElementById('testData').value;
 
-                let requestPhase = 'parse';
+                requestPhase = 'parse';
                 const testData = JSON.parse(testDataText);
 
                 const filters = {

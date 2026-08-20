@@ -254,6 +254,8 @@ class DataAnalysisService:
     @staticmethod
     def _compute_z_scores(data: np.ndarray) -> tuple:
         n = len(data)
+        if n == 0:
+            return "无数据", np.zeros(0, dtype=float)
         if n >= 20:
             try:
                 stat, p_value = stats.normaltest(data)
@@ -274,7 +276,9 @@ class DataAnalysisService:
             return "Modified Z-score (MAD)", z_scores
 
         mu = np.mean(data)
-        sigma = np.std(data, ddof=1)
+        # np.std(data, ddof=1) 在 n<=1 时内部除法路径会抛 ZeroDivisionError（退化面数据），
+        # 显式保护：n<=1 时标准差视为 0，走「无变异性」分支
+        sigma = float(np.std(data, ddof=1)) if n > 1 else 0.0
         if sigma > 0:
             z_scores = np.abs(data - mu) / sigma
             return "Z-score (回退)", z_scores

@@ -32,7 +32,6 @@
                         <!-- Plotly图表容器 -->
                         <div 
                             id="p1_{{ chart_type }}" 
-                            class="plotly-chart" 
                             class="plotly-chart chart-partial-iframe"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
@@ -59,7 +58,6 @@
                         <!-- Plotly图表容器 -->
                         <div 
                             id="p2_{{ chart_type }}" 
-                            class="plotly-chart" 
                             class="plotly-chart chart-partial-iframe"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
@@ -86,7 +84,6 @@
                         <!-- Plotly图表容器 -->
                         <div 
                             id="st_{{ chart_type }}" 
-                            class="plotly-chart" 
                             class="plotly-chart chart-partial-iframe"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="ST面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
@@ -114,7 +111,6 @@
                         <!-- Plotly图表容器 -->
                         <div 
                             id="single_{{ chart_type }}" 
-                            class="plotly-chart" 
                             class="plotly-chart chart-partial-iframe"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="{{ single_surface_title }}{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
@@ -162,7 +158,6 @@
                         <!-- Plotly图表容器 -->
                         <div 
                             id="parallel_p1_{{ chart_type }}" 
-                            class="plotly-chart" 
                             class="plotly-chart chart-partial-iframe-sm"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="P1面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
@@ -188,7 +183,6 @@
                         <!-- Plotly图表容器 -->
                         <div 
                             id="parallel_p2_{{ chart_type }}" 
-                            class="plotly-chart" 
                             class="plotly-chart chart-partial-iframe-sm"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="P2面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
@@ -214,7 +208,6 @@
                         <!-- Plotly图表容器 -->
                         <div 
                             id="parallel_st_{{ chart_type }}" 
-                            class="plotly-chart" 
                             class="plotly-chart chart-partial-iframe-sm"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="ST面不平衡量{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
@@ -241,7 +234,6 @@
                         <!-- Plotly图表容器 -->
                         <div 
                             id="parallel_single_{{ chart_type }}" 
-                            class="plotly-chart" 
                             class="plotly-chart chart-partial-iframe-sm"
                             data-chart-type="{{ chart_type }}"
                             data-chart-title="{{ single_surface_title }}{{ chart_type_config.get(chart_type, {}).name or chart_type }}"
@@ -280,9 +272,12 @@
                         const chartDataUnescaped = chartDataRaw.replace(/&#34;/g, '"').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
                         const chartData = JSON.parse(chartDataUnescaped);
                         
+                        // Y轴标题统一标注单位（与报告/静态PNG一致）
+                        const yLabel = chartType === 'histogram' ? '频次' : '不平衡量 (g·mm)';
                         plotlyManager.initChart(chartId, chartType, chartData, {
                             title: chartTitle,
-                            color: chartColor
+                            color: chartColor,
+                            yAxisLabel: yLabel
                         });
                     }
                 } catch (error) {
@@ -380,9 +375,14 @@
                 }
             });
         }
-        if (typeof YAxisAligner !== 'undefined' && YAxisAligner.isAligned()) {
-            YAxisAligner.reset();
-            YAxisAligner.updateButtonState(false);
+        if (typeof YAxisAligner !== 'undefined') {
+            // 兼容旧版缓存 JS：方法不存在时跳过，避免图表更新失败
+            if (YAxisAligner.isAligned && YAxisAligner.isAligned()) {
+                if (YAxisAligner.realignIfAuto) YAxisAligner.realignIfAuto();
+            } else if (YAxisAligner.autoAlignOnce) {
+                // 未对齐（首次/已手动取消）：图表就绪后自动对齐一次
+                YAxisAligner.autoAlignOnce();
+            }
         }
     }
 </script>

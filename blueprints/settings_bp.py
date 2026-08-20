@@ -294,34 +294,6 @@ def save_db_config():
     return redirect(url_for("settings.settings"))
 
 
-@settings_bp.route("/load_db_config")
-def load_db_config():
-    try:
-        config = config_manager.get_db_config()
-        if config and "password" in config and config["password"]:
-            config["password"] = "********"
-        return jsonify({"success": True, "config": config})
-    except Exception:
-        current_app.logger.error("加载配置时出现错误", exc_info=True)
-        return jsonify({"success": False, "message": "加载配置时出现错误，请稍后重试"})
-
-
-@settings_bp.route("/reset_db_config")
-def reset_db_config():
-    """重置数据库连接配置"""
-    try:
-        success = config_manager.reset_db_config()
-        if success:
-            flash("数据库连接配置已重置", "success")
-        else:
-            flash("重置配置失败", "error")
-    except Exception:
-        current_app.logger.error("重置配置时出现错误", exc_info=True)
-        flash("重置配置时出现错误，请稍后重试", "error")
-
-    return redirect(url_for("settings.settings"))
-
-
 @settings_bp.route("/database_connections", methods=["POST"])
 def delete_database_connection():
     """删除已保存的数据库连接配置"""
@@ -339,58 +311,6 @@ def delete_database_connection():
     return jsonify({"success": False, "error": "无效的操作"})
 
 
-@settings_bp.route("/test_connection", methods=["POST"])
-def test_connection():
-    """测试数据库连接（跨平台带超时保护）"""
-    try:
-        name = request.form.get("connection_name")
-        connection_type = request.form.get("connection_type")
-        host = request.form.get("host")
-        port = request.form.get("port", type=int) if request.form.get("port") else None
-        database = request.form.get("database")
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        if not name or not connection_type or not host:
-            return jsonify({"success": False, "message": "连接名称、类型和主机不能为空！"})
-
-        if port is not None and (not isinstance(port, int) or port <= 0 or port > 65535):
-            return jsonify({"success": False, "message": "端口号必须是有效的整数（1-65535）！"})
-
-        connection = DatabaseConnection(
-            connection_id=0,
-            name=name,
-            connection_type=connection_type,
-            host=host,
-            port=port,
-            database=database,
-            username=username,
-            password=password,
-        )
-
-        result = test_connection_with_timeout(connection)
-
-        if result.get("success"):
-            connection.status = "active"
-
-        pool_status = {
-            "total_connections": len(connection_manager.get_all_connections()),
-            "cached_connections": len(connection_tester._connection_cache)
-            if hasattr(connection_tester, "_connection_cache")
-            else 0,
-        }
-
-        return jsonify(
-            {
-                "success": result.get("success", False),
-                "message": result.get("message", "未知错误"),
-                "pool_status": pool_status,
-            }
-        )
-    except (ValueError, TypeError, OSError):
-        return jsonify({"success": False, "message": "连接测试失败，请检查配置参数"})
-
-
 @settings_bp.route("/get_connection")
 def get_connection():
     """获取连接详情"""
@@ -403,13 +323,6 @@ def get_connection():
         return jsonify({"success": False, "message": "连接配置不存在"})
 
     return jsonify({"success": True, "connection": connection.to_dict()})
-
-
-@settings_bp.route("/face_weights")
-def get_face_weights():
-    """获取端面权重配置"""
-    weights = config_manager.get_face_weights()
-    return jsonify({"success": True, "weights": weights})
 
 
 @settings_bp.route("/save_face_weights", methods=["POST"])
@@ -601,77 +514,6 @@ def api_db_status():
         "pool_status": _get_connection_pool_status(),
     }
     return jsonify({"success": True, "data": status})
-
-
-@settings_bp.route("/api/reload_db_connection", methods=["POST"])
-def api_reload_db_connection():
-    """重新加载数据库连接（切换数据库后无需重启应用）"""
-    import os as _os
-
-    try:
-        from urllib.parse import quote_plus as _qp
-        from sqlalchemy import text as _sa_text
-
-        from db_models import db as _app_db
-
-        # 找到主连接
-        conns = connection_manager.get_all_connections()
-        primary = None
-        for c in conns:
-            if c.is_primary:
-                primary = c
-                break
-        if not primary and conns:
-            primary = conns[0]
-
-        if not primary:
-            return jsonify({"success": False, "message": "没有找到可用的数据库连接配置"})
-
-        # 构建 SQLAlchemy URI（URL 编码防止密码特殊字符导致 URI 解析错误）
-        db_type = primary.type.lower()
-        _enc_user = _qp(primary.username or "")
-        _enc_pass = _qp(primary.password or "")
-        if db_type == "mysql":
-            _uri = (
-                f"mysql+pymysql://{_enc_user}:{_enc_pass}"
-                f"@{primary.host}:{primary.port}/{primary.database}?charset=utf8mb4"
-            )
-        elif db_type == "postgresql":
-            _uri = (
-                f"postgresql://{_enc_user}:{_enc_pass}"
-                f"@{primary.host}:{primary.port}/{primary.database}"
-            )
-        else:
-            base_dir = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
-            _uri = f"sqlite:///{_os.path.join(base_dir, primary.database or 'app.db')}"
-
-        current_app.config["SQLALCHEMY_DATABASE_URI"] = _uri
-
-        # 释放旧连接池 + 清除引擎缓存，后续查询将使用新 URI
-        if _app_db is not None:
-            _app_db.engine.dispose()
-            if hasattr(_app_db, '_app_engines'):
-                _app = current_app._get_current_object()
-                _app_db._app_engines.get(_app, {}).pop(None, None)
-
-        # 告之 Session 原会话可能失效
-        import db_models as _dm
-
-        _msg = f"数据库连接已切换到 {primary.name} ({primary.type}@{primary.host})"
-        try:
-            with current_app.app_context():
-                _app_db.session.execute(_sa_text("SELECT 1"))
-            # 更新全局数据库状态标志
-            _dm.DB_CONNECTED = True
-            _dm.DB_ERROR_MESSAGE = ""
-            logger.info(_msg)
-            return jsonify({"success": True, "message": _msg + " — 连接验证通过"})
-        except Exception as e:
-            logger.warning("新连接验证失败: %s", str(e))
-            return jsonify({"success": True, "message": _msg + f" (验证未通过: {str(e)})"})
-    except Exception as e:
-        current_app.logger.error("重载数据库连接失败: %s", str(e))
-        return jsonify({"success": False, "message": f"重载失败: {str(e)}"})
 
 
 def _sanitize_db_error(raw_error: str) -> str:

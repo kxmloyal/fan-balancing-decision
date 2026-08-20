@@ -11,10 +11,7 @@ from flask import Blueprint, current_app, jsonify, render_template, request
 
 from app.utils.cache_utils import file_cache, query_cache
 from machine_learning import (
-    analyze_balance_data,
-    cluster_balance_data,
     detect_anomaly_patterns,
-    detect_outliers_iqr,
     multi_dimensional_analysis,
     predict_key_metrics,
     predict_trend,
@@ -207,103 +204,6 @@ def api_predict_trend():
     except Exception as e:
         current_app.logger.error(f"predict_trend error: {e}", exc_info=True)
         return jsonify({"success": False, "error": "模型训练/预测失败，请稍后重试"}), 500
-
-
-@ml_bp.route("/api/analyze_balance_data", methods=["POST"])
-def api_analyze_balance_data():
-    """⚠️ 外部API — 暂无前端UI面板调用
-    平衡数据综合 ML 分析——趋势+聚类+异常三合一"""
-    try:
-        if _check_payload_size():
-            return jsonify({"success": False, "error": "请求数据过大，请减少数据量后重试"}), 413
-
-        data = request.get_json()
-        if not data:
-            return jsonify({"success": False, "error": "请提供有效的JSON数据"})
-
-        balance_records = data.get("balance_records")
-        fan_model = data.get("fan_model", "")
-
-        if (
-            not balance_records
-            or not isinstance(balance_records, list)
-            or len(balance_records) == 0
-        ):
-            return jsonify({"success": False, "error": "请提供有效的平衡测量数据"}), 400
-
-        for rec in balance_records:
-            if not isinstance(rec, dict):
-                return jsonify({"success": False, "error": "平衡数据中每项应为字典格式"}), 400
-
-        result = analyze_balance_data(balance_records, fan_model)
-
-        return jsonify({"success": True, "result": result})
-    except ValueError as e:
-        current_app.logger.warning(f"analyze_balance_data ValueError: {e}")
-        return jsonify({"success": False, "error": str(e)}), 400
-    except Exception as e:
-        current_app.logger.error(f"analyze_balance_data error: {e}", exc_info=True)
-        return jsonify({"success": False, "error": "分析失败，请稍后重试"}), 500
-
-
-@ml_bp.route("/api/cluster_balance_data", methods=["POST"])
-def api_cluster_balance_data():
-    """⚠️ 外部API — 暂无前端UI面板调用
-    KMeans 聚类分析"""
-    try:
-        if _check_payload_size():
-            return jsonify({"success": False, "error": "请求数据过大，请减少数据量后重试"}), 413
-
-        data = request.get_json()
-        if not data:
-            return jsonify({"success": False, "error": "请提供有效的JSON数据"})
-
-        surface_data = data.get("surface_data")
-        n_clusters = data.get("n_clusters", 3)
-
-        if not surface_data or not isinstance(surface_data, list) or len(surface_data) < 2:
-            return jsonify({"success": False, "error": "请提供至少2组有效的平衡面数据"}), 400
-
-        if not isinstance(n_clusters, int) or n_clusters < 2 or n_clusters > 10:
-            n_clusters = 3
-
-        result = cluster_balance_data(surface_data, n_clusters)
-
-        return jsonify({"success": True, "result": result})
-    except ValueError as e:
-        current_app.logger.warning(f"cluster_balance_data ValueError: {e}")
-        return jsonify({"success": False, "error": str(e)}), 400
-    except Exception as e:
-        current_app.logger.error(f"cluster_balance_data error: {e}", exc_info=True)
-        return jsonify({"success": False, "error": "聚类分析失败，请稍后重试"}), 500
-
-
-@ml_bp.route("/api/detect_outliers_iqr", methods=["POST"])
-def api_detect_outliers_iqr():
-    """⚠️ 外部API — 暂无前端UI面板调用
-    IQR 异常值检测"""
-    try:
-        if _check_payload_size():
-            return jsonify({"success": False, "error": "请求数据过大，请减少数据量后重试"}), 413
-
-        data = request.get_json()
-        if not data:
-            return jsonify({"success": False, "error": "请提供有效的JSON数据"})
-
-        values = data.get("values")
-
-        if not values or not isinstance(values, list) or len(values) < 2:
-            return jsonify({"success": False, "error": "请提供至少2个数值"}), 400
-
-        result = detect_outliers_iqr(values)
-
-        return jsonify({"success": True, "result": result})
-    except ValueError as e:
-        current_app.logger.warning(f"detect_outliers_iqr ValueError: {e}")
-        return jsonify({"success": False, "error": str(e)}), 400
-    except Exception as e:
-        current_app.logger.error(f"detect_outliers_iqr error: {e}", exc_info=True)
-        return jsonify({"success": False, "error": "异常检测失败，请稍后重试"}), 500
 
 
 @ml_bp.route("/api/predict_key_metrics", methods=["POST"])

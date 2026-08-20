@@ -65,9 +65,11 @@ class ReportDataExporter:
             raise RuntimeError("导出CSV需要安装pandas: pip install pandas")
 
         stats_data = self._extract_stats_for_export(session_data)
-        if stats_data:
-            df = pd.DataFrame(stats_data)
-            df.to_csv(output_path, index=False, encoding="utf-8-sig")
+        if not stats_data:
+            # 无可导出数据时不得返回不存在的文件路径（否则 send_file 404、无明确提示）
+            raise ValueError("暂无统计数据可供导出，请先完成数据分析")
+        df = pd.DataFrame(stats_data)
+        df.to_csv(output_path, index=False, encoding="utf-8-sig")
 
         self.add_to_history(
             {

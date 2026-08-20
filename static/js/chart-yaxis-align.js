@@ -1,5 +1,6 @@
 var YAxisAligner = (function () {
     var _aligned = false;
+    var _autoAligned = false;   // 页面加载后是否已自动对齐（默认对齐模式）
     var _originalRanges = {};
     var _unifiedRange = null;
 
@@ -182,11 +183,50 @@ var YAxisAligner = (function () {
         return _aligned;
     }
 
+    // 默认对齐：页面加载后自动执行一次（不再需要手动点击"对齐Y轴"）
+    var _autoAlignTimer = null;
+    function autoAlignOnce() {
+        if (_autoAligned || _autoAlignTimer) return;
+        var tries = 0;
+        _autoAlignTimer = setInterval(function () {
+            tries++;
+            if (_getVisibleChartIds().length >= 2 && align()) {
+                _autoAligned = true;
+                updateButtonState(true);
+                clearInterval(_autoAlignTimer);
+                _autoAlignTimer = null;
+            } else if (tries >= 20) {
+                clearInterval(_autoAlignTimer); // 最多等待约 10 秒
+                _autoAlignTimer = null;
+            }
+        }, 500);
+    }
+
+    // 图表重绘（如切换配色/分析结果更新）后重新执行对齐，保持默认对齐状态
+    function realignIfAuto() {
+        if (_autoAligned && _aligned) {
+            if (align()) {
+                updateButtonState(true);
+            }
+        }
+    }
+
     return {
         align: align,
         reset: reset,
         toggle: toggle,
         isAligned: isAligned,
-        updateButtonState: updateButtonState
+        updateButtonState: updateButtonState,
+        autoAlignOnce: autoAlignOnce,
+        realignIfAuto: realignIfAuto
     };
 })();
+
+// 页面加载后自动对齐 Y 轴（默认对齐，无需手动点击）
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+        YAxisAligner.autoAlignOnce();
+    });
+} else {
+    YAxisAligner.autoAlignOnce();
+}

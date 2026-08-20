@@ -125,7 +125,7 @@ def _generate_matplotlib_png(chart_data_json_str, chart_type, surface_name, png_
                 ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=9)
                 ax.tick_params(axis="x", which="major", pad=10)
                 ax.set_title(chart_config["title"])
-                ax.set_ylabel("不平衡量")
+                ax.set_ylabel("不平衡量 (g·mm)")
                 ax.grid(True, linestyle="--", alpha=0.3)
                 try:
                     plt.tight_layout()
@@ -150,7 +150,7 @@ def _generate_matplotlib_png(chart_data_json_str, chart_type, surface_name, png_
                 ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=9)
                 ax.tick_params(axis="x", which="major", pad=10)
                 ax.set_title(chart_config["title"])
-                ax.set_ylabel("不平衡量")
+                ax.set_ylabel("不平衡量 (g·mm)")
                 plt.tight_layout()
 
         elif chart_type == "scatter":
@@ -173,7 +173,7 @@ def _generate_matplotlib_png(chart_data_json_str, chart_type, surface_name, png_
                 )
                 ax.tick_params(axis="x", which="major", pad=10)
                 ax.set_title(chart_config["title"])
-                ax.set_ylabel("不平衡量")
+                ax.set_ylabel("不平衡量 (g·mm)")
                 plt.tight_layout()
 
         elif chart_type == "violin":
@@ -204,7 +204,7 @@ def _generate_matplotlib_png(chart_data_json_str, chart_type, surface_name, png_
                 ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=9)
                 ax.tick_params(axis="x", which="major", pad=10)
                 ax.set_title(chart_config["title"])
-                ax.set_ylabel("不平衡量")
+                ax.set_ylabel("不平衡量 (g·mm)")
                 ax.grid(True, linestyle="--", alpha=0.3)
                 plt.tight_layout()
 
@@ -278,7 +278,7 @@ def _generate_matplotlib_png(chart_data_json_str, chart_type, surface_name, png_
                 ax.tick_params(axis="x", which="major", pad=10)
                 ax.set_title(chart_config["title"])
                 ax.set_xlabel("转速")
-                ax.set_ylabel("不平衡量")
+                ax.set_ylabel("不平衡量 (g·mm)")
                 ax.grid(True, linestyle="--", alpha=0.3)
                 plt.tight_layout()
 
@@ -341,7 +341,7 @@ def _generate_matplotlib_png(chart_data_json_str, chart_type, surface_name, png_
                 ax.tick_params(axis="x", which="major", pad=10)
                 ax.set_title(chart_config["title"])
                 ax.set_xlabel("转速")
-                ax.set_ylabel("不平衡量")
+                ax.set_ylabel("不平衡量 (g·mm)")
                 ax.legend(loc="best", fontsize=9)
                 ax.grid(True, linestyle="--", alpha=0.3)
                 try:

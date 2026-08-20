@@ -26,14 +26,24 @@ class ChartResourceManager:
         except Exception:
             return str(datetime.now().timestamp())
 
-    def generate_chart_id(self, data_hash, surface_type, chart_type):
-        """生成图表唯一标识符"""
-        return f"chart_{data_hash}_{surface_type}_{chart_type}"
+    def generate_chart_id(self, data_hash, surface_type, chart_type, scope=None):
+        """生成图表唯一标识符（scope 为输出目录/型号等维度，短哈希避免跨目录缓存复用失效路径）"""
+        scope_part = ""
+        if scope:
+            scope_part = "_" + hashlib.md5(str(scope).encode()).hexdigest()[:8]
+        return f"chart_{data_hash}{scope_part}_{surface_type}_{chart_type}"
 
     def is_chart_generated(self, chart_id):
-        """检查图表是否已生成"""
+        """检查图表是否已生成（缓存路径失效时视为未生成，触发重新生成）"""
         with self.lock:
-            return chart_id in self.chart_resources
+            res = self.chart_resources.get(chart_id)
+            if res is None:
+                return False
+            # 缓存记录的是首次生成的完整路径；文件已被清理或目录变化（如不同型号/输出目录）
+            # 时按 basename 拼出的当前目录找不到该文件，此时应视为未生成并重新生成
+            if not os.path.exists(res.get("png_path", "")):
+                return False
+            return True
 
     def get_chart_resource(self, chart_id):
         """获取图表资源信息"""

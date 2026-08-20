@@ -36,7 +36,8 @@
         <div class="report-section scroll-reveal">
             <h2>导出报告</h2>
             <div class="export-options animate-fade-in-up">
-                <form action="{{ url_for('report.export_report') }}" method="GET" id="reportExportForm">
+                <form action="{{ url_for('report.export_report') }}" method="POST" id="reportExportForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="option-group">
                         <h4><i class="bi bi-file-earmark-text format-icon"></i> 报告格式</h4>
                         <div class="row">
@@ -82,12 +83,6 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="include_raw_data" name="include_raw_data" value="1">
-                                    <label class="form-check-label" for="include_raw_data">
-                                        包含原始数据
-                                    </label>
-                                </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="include_recommendations" name="include_recommendations" value="1" checked>
                                     <label class="form-check-label" for="include_recommendations">
@@ -143,6 +138,50 @@
                     </div>
                 </form>
             </div>
+        </div>
+
+        <div class="report-section scroll-reveal">
+            <h2>最近导出的报告</h2>
+            {% if recent_exports %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>报告文件</th>
+                                <th>扇叶型号</th>
+                                <th>格式</th>
+                                <th>导出时间</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in recent_exports %}
+                                <tr>
+                                    <td><i class="bi bi-file-earmark-text me-2 text-primary"></i>{{ item.filename }}</td>
+                                    <td><strong>{{ item.fan_model }}</strong></td>
+                                    <td><span class="badge bg-secondary text-uppercase">{{ item.type }}</span></td>
+                                    <td class="text-muted">{{ item.timestamp[:19] if item.timestamp }}</td>
+                                    <td class="text-end">
+                                        <a href="{{ url_for('outputs.download_file', filename=item.download_path) }}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-download me-1"></i>下载
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted small">
+                    <i class="bi bi-info-circle me-1"></i>更多报告文件请前往
+                    <a href="{{ url_for('outputs.outputs') }}">报告管理</a> 页面查看。
+                </p>
+            {% else %}
+                <div class="alert alert-light border text-center py-4">
+                    <i class="bi bi-inbox d-block mb-2 fs-3 text-muted"></i>
+                    暂无导出记录，导出成功后在此展示最近 8 条报告。
+                </div>
+            {% endif %}
         </div>
 
         <div class="report-section scroll-reveal">

@@ -1,4 +1,4 @@
-function initDashboardCharts() {
+function initDashboardCharts(onlyId) {
     var d = (typeof _dash !== 'undefined') ? _dash : null;
     if (!d || (!d.evaluation_dates.length && !d.speed_labels.length && !d.model_labels.length)) {
         showEmptyState();
@@ -7,11 +7,15 @@ function initDashboardCharts() {
 
     var colors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
+    function wanted(id) {
+        return !onlyId || id === onlyId;
+    }
+
     var trendEl = document.getElementById('trendChart');
     var modelEl = document.getElementById('modelChart');
     var speedEl = document.getElementById('speedChart');
 
-    if (trendEl && d.evaluation_dates.length) {
+    if (trendEl && d.evaluation_dates.length && wanted('trendChart')) {
         Plotly.newPlot('trendChart', [{
             x: d.evaluation_dates,
             y: d.evaluation_counts,
@@ -27,7 +31,7 @@ function initDashboardCharts() {
         }, { responsive: true, displayModeBar: false });
     }
 
-    if (modelEl && d.model_labels.length) {
+    if (modelEl && d.model_labels.length && wanted('modelChart')) {
         Plotly.newPlot('modelChart', [{
             labels: d.model_labels,
             values: d.model_counts,
@@ -44,7 +48,7 @@ function initDashboardCharts() {
         }, { responsive: true, displayModeBar: false });
     }
 
-    if (speedEl && d.speed_labels.length) {
+    if (speedEl && d.speed_labels.length && wanted('speedChart')) {
         Plotly.newPlot('speedChart', [{
             x: d.speed_labels,
             y: d.speed_counts,
@@ -67,7 +71,7 @@ function showEmptyState() {
     });
 }
 
-function refreshCharts() {
+function refreshCharts(targetId) {
     var fetchFn = typeof window.safeFetch === 'function' ? window.safeFetch : fetch;
     fetchFn('/api/dashboard/data')
         .then(function(res) { return res.ok ? res.json() : Promise.reject(res); })
@@ -81,29 +85,36 @@ function refreshCharts() {
                     model_labels: json.data.model_labels || [],
                     model_counts: json.data.model_counts || []
                 };
-                ['trendChart', 'modelChart', 'speedChart'].forEach(function(id) {
+                var ids = targetId ? [targetId] : ['trendChart', 'modelChart', 'speedChart'];
+                ids.forEach(function(id) {
                     var el = document.getElementById(id);
                     if (el) Plotly.purge(el);
                 });
-                initDashboardCharts();
+                initDashboardCharts(targetId);
             }
         })
         .catch(function() {
-            ['trendChart', 'modelChart', 'speedChart'].forEach(function(id) {
+            var ids = targetId ? [targetId] : ['trendChart', 'modelChart', 'speedChart'];
+            ids.forEach(function(id) {
                 var el = document.getElementById(id);
                 if (el) Plotly.purge(el);
             });
-            initDashboardCharts();
+            initDashboardCharts(targetId);
         });
 }
 
-['refreshTrendChart', 'refreshModelChart', 'refreshSpeedChart'].forEach(function(btnId) {
+var _chartButtons = {
+    refreshTrendChart: 'trendChart',
+    refreshModelChart: 'modelChart',
+    refreshSpeedChart: 'speedChart'
+};
+Object.keys(_chartButtons).forEach(function(btnId) {
     var btn = document.getElementById(btnId);
     if (btn) btn.addEventListener('click', function() {
         var orig = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>刷新中...';
-        refreshCharts().finally(function() {
+        refreshCharts(_chartButtons[btnId]).finally(function() {
             btn.disabled = false;
             btn.innerHTML = orig;
         });

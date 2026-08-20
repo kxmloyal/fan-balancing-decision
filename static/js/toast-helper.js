@@ -5,8 +5,9 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-window.showToast = function(message, type) {
+window.showToast = function(type, message) {
     type = type || 'danger';
+    message = message || '';
     var container = document.getElementById('toastContainer');
     if (!container) {
         container = document.createElement('div');

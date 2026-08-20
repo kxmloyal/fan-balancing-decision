@@ -99,8 +99,8 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 
 # 项目上下文 — 扇叶平衡补土转速评估工具
 
-> **最后更新**: 2026-05-12 | **项目规模**: ~100源文件 · ~35,000行 · Python + JS + HTML/CSS  
-> **综合评级**: 🟢 良好+偏优 (算法88 · 视觉85 · 交互82 · 安全82 · 架构78 · 工程74 · 生产就绪80)
+> **最后更新**: 2026-08-20 | **项目规模**: ~120源文件 · ~38,000行 · Python + JS + HTML/CSS  
+> **综合评级**: 🟢 良好+偏优 (算法90 · 视觉87 · 交互83 · 安全85 · 架构82 · 工程78 · 生产就绪82)
 
 ---
 
@@ -120,7 +120,9 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 数据上传→解析导入→project_statistics.py(最优转速评分)
   → data_analysis.py(深度分析: 趋势+异常+聚类)
   → skill_evaluation.py(综合评估: 数据质量+技能等级+推荐)
-→ 报告导出(HTML)
+→ 报告导出(HTML/PDF/CSV/JSON/Excel) — services/report_* 三层架构
+  → ReportRenderer 数据驱动渲染(封面/目录/评分明细表/页眉脚/版本v2.0)
+  → 图表双轨兜底(静态PNG + Plotly交互, PDF天然静态图)
 ```
 
 ---
@@ -144,54 +146,68 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 │
 ├── wsgi.py                               ★ 唯一启动入口
 ├── config.py                              配置常量（UPLOAD_FOLDER/PORT/MAX_CONTENT_LENGTH等）
-├── project_statistics.py                  ★ 最优转速评分算法 — 核心
+├── project_statistics.py                  最优转速评分（兼容shim，核心在 app/services/）
+├── machine_learning.py                    机器学习/聚类/异常检测（根级，724行）
 ├── database_connections.py                数据库连接管理
-├── report_export.py                       报告导出
+├── report_export.py                       报告导出兼容转发层（无业务逻辑）
 ├── report_exporter_extension.py           报告导出扩展
-├── chart_generation_optimized.py          图表生成（含缓存）
+├── report_export_css.py                   报告导出CSS外部化（EXPORTER_CSS）
+├── chart_generation_optimized.py          图表生成（含缓存，10种图表）
 ├── chart_style_config.py                  图表样式配置
 ├── data_processing.py                     数据处理
 ├── db_models.py                           数据库模型
-├── machine_learning.py                    机器学习
+├── ml_data_adapter.py                     ML数据适配
+├── gunicorn_conf.py                       Gunicorn 配置
+│
+├── services/                               ★ 报告导出核心服务（三层架构）
+│   ├── report_exporter.py                 ReportExporter核心 + HtmlExporter（ShareLinkManager 已独立）
+│   ├── report_renderer.py                 ★ ReportRenderer 数据驱动HTML报告渲染（第39轮新建）
+│   ├── report_data_export.py              ReportDataExporter（CSV/JSON/Excel）
+│   ├── report_constants.py                PLOTLY常量（CDN + 双轨脚本）
+│   ├── share_link_manager.py              ★ ShareLinkManager 分享链接管理（第42轮拆分）
+│   └── data_service.py                    数据服务
 │
 ├── app/                                   Flask应用包
 │   ├── __init__.py                        应用工厂（备用入口，非主入口）
 │   ├── services/                          核心服务层
+│   │   ├── project_statistics.py          ★ 最优转速评分算法（核心，998行）
 │   │   ├── data_analysis.py               ★ 深度分析：趋势/异常/聚类/高级统计
 │   │   ├── skill_evaluation.py            ★ 综合评估：编排+质量+评分+推荐
-│   │   ├── machine_learning.py            机器学习预测模型
 │   │   ├── statistics.py                  统计服务
-│   │   ├── chart_generation.py            图表生成服务
-│   │   └── data_processing.py             数据处理服务
+│   │   ├── chart_generation.py            图表生成服务（弃用标注，指向根级 optimized）
+│   │   ├── chart_plotly_renderer.py       Plotly 图表渲染
+│   │   ├── chart_matplotlib_renderer.py   Matplotlib 图表渲染
+│   │   ├── chart_cache.py                 图表缓存
+│   │   ├── chart_utils.py / chart_fallback.py  图表工具/回退
+│   │   ├── data_processing.py             数据处理服务
+│   │   └── connection_manager.py / connection_tester.py  连接管理/测试
 │   └── utils/                             工具模块
-│       ├── crypto_utils.py                密码加密（XOR+SHA256+Base64）
+│       ├── crypto_utils.py                密码加密（Fernet/PBKDF2HMAC，解密兼容旧XOR格式）
 │       ├── config_manager.py              配置管理（URL编码密码、原子写入）
 │       ├── file_manager.py                文件操作
 │       ├── error_handler.py               日志与错误处理
+│       ├── data_validator.py              数据验证
 │       ├── chart_resource_manager.py      图表资源管理
-│       └── data_validator.py              数据验证
+│       ├── cache_utils.py                 缓存工具
+│       └── api_response.py                API统一响应类
 │
-├── blueprints/                            Flask蓝图路由（7个，第12轮清理shim）
+├── blueprints/                            Flask蓝图路由（7个）
 │   ├── main_bp.py                         首页/仪表盘/数据上传
-│   ├── analysis_bp.py                     统一分析蓝图（深度分析+技能评估，合并原2个shim）
+│   ├── analysis_bp.py                     统一分析蓝图（深度分析+技能评估）
 │   ├── report_bp.py                       报告查看/分享
 │   ├── ml_bp.py                           机器学习预测
 │   ├── outputs_bp.py                      输出管理
 │   ├── settings_bp.py                     数据库连接配置页面
 │   └── database_bp.py                     数据库连接管理API
 │
-├── templates/                             Jinja2模板（15个）
+├── templates/                             Jinja2模板（14个）
 ├── static/                                前端静态资源
-│   ├── js/                                JavaScript（16个）
-│   │   └── in_depth_analysis_enhanced.js  深度分析增强脚本
-│   └── css/                               CSS样式
-├── exporters/                             导出器（HTML）
+│   ├── js/                                JavaScript（23个）
+│   └── css/                               CSS样式（8个）
+├── exporters/                             导出器（兼容）
 ├── models/                                数据模型
-├── services/                              辅助数据服务
-├── tests/                                 测试文件（17个）
+├── tests/                                 测试文件（18个）
 ├── utils/                                 app/utils/ 兼容层
-├── report_export_css.py                   报告导出CSS外部化模块（第12轮新建）
-├── app/utils/api_response.py              API统一响应类（第12轮新建）
 └── outputs/                               输出目录
 ```
 
@@ -199,14 +215,17 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 
 | 我需要修改... | 应该看... |
 |--------------|----------|
-| 最优转速评分逻辑 | `project_statistics.py` |
+| 最优转速评分逻辑 | `app/services/project_statistics.py` |
 | 趋势分析/异常检测/聚类 | `app/services/data_analysis.py` |
 | 综合技能评估流程 | `app/services/skill_evaluation.py` |
 | 图表生成 | `chart_generation_optimized.py` 或 `app/services/chart_generation.py` |
 | API路由 | `blueprints/analysis_bp.py` |
 | 数据库密码加密 | `app/utils/crypto_utils.py` |
 | 配置文件管理 | `app/utils/config_manager.py` |
-| 报告导出 | `report_export.py` 或 `exporters/html_exporter.py` |
+| 报告导出(HTML/PDF) | `services/report_exporter.py`（核心）或 `report_export.py`（兼容转发层） |
+| 报告HTML渲染 | `services/report_renderer.py` |
+| 报告数据导出(CSV/JSON/Excel) | `services/report_data_export.py` |
+| 报告图表双轨/PLOTLY常量 | `report_export_css.py` + `services/report_constants.py` |
 | 报告管理API | `blueprints/outputs_bp.py` |
 | 报告管理页面 | `templates/outputs.html` + `static/js/outputs.js` |
 | 前端深度分析交互 | `static/js/in_depth_analysis_enhanced.js` |
@@ -214,7 +233,7 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 | 数据验证 | `app/utils/data_validator.py` |
 | 数据处理 | `data_processing.py` 或 `app/services/data_processing.py` |
 | 数据库模型 | `db_models.py` 或 `models/` |
-| 机器学习预测 | `machine_learning.py` 或 `app/services/machine_learning.py` |
+| 机器学习预测 | `machine_learning.py`（根级） |
 
 ---
 
@@ -289,6 +308,26 @@ n < 8: 直接 Modified Z-score（小样本更稳健）
 - `MIN_SAMPLES_PER_SPEED = 2`
 - `MIN_SPEED_COUNT = 2`
 
+### 4.6 报告导出体系（第39-42轮重构，修改前必读）
+
+**三层架构**（根目录 `report_export.py` 仅为兼容转发层，无业务逻辑）:
+
+| 层 | 文件 | 职责 |
+|----|------|------|
+| 核心 | `services/report_exporter.py` | `ReportExporter`（导出编排/历史/分享）+ `HtmlExporter`。`__init__(app=None, output_folder=None)` |
+| 分享 | `services/share_link_manager.py` | `ShareLinkManager`（第42轮从 report_exporter.py 拆分）：create_link/revoke_link/get_link/list_links，`shareable_links.json` 持久化 |
+| 渲染 | `services/report_renderer.py` | `ReportRenderer` 数据驱动渲染：`render(session_data, report_config=None)`。六章节（一分析摘要/二评分明细/三统计结果/四数据图表/五方法/六建议），`include_*` 开关**同时控制目录与正文** |
+| 数据导出 | `services/report_data_export.py` | `ReportDataExporter`：CSV/JSON/Excel |
+| 常量 | `services/report_constants.py` | `PLOTLY_CDN_URL` + `PLOTLY_DUAL_TRACK_SCRIPT`（图表双轨脚本） |
+
+**图表双轨兜底**：报告内每个图表同时输出 `<img>` base64 静态图 + 隐藏的 `.chart-plotly-container` 交互容器。Plotly CDN 可用时 JS 渲染交互图并隐藏静态图；离线/异常保留静态图；`@media print` 强制静态图。PDF 经 weasyprint 不执行 JS，天然静态图。
+
+**关键结构**（`ReportRenderer._build_context` 消费）:
+- `session_data.evaluation_report`: `best_speeds`(list) / `best_score` / `speed_detailed_scores`(**Dict[转速str, Dict]**) / `all_min_iqr_speeds`(**Dict[面, 转速]**) / `all_min_cv_speeds` / `has_p1/has_p2/has_st`
+- `session_data.plots`: `{p1|p2|sum: {chart_type: {png, chart_data}}}`（嵌套 dict，不是 surface_plots）
+- `session_data.parsed_data`: **list** of `{speed, p1_samples, p2_samples, sum_samples}`
+- 已删除接口（勿引用）：`build_report_html`/`_build_charts`/`add_to_queue`/`create_export_task`/`batch_export`/`generate_chart_cache_key` 等图表缓存/任务队列系列
+
 ---
 
 ## 五、安全注意事项
@@ -324,19 +363,19 @@ n < 8: 直接 Modified Z-score（小样本更稳健）
 
 ---
 
-## 七、三省六部全量审查结论（2026-05-12）
+## 七、三省六部全量审查结论（2026-08-20 更新）
 
 ### 7.1 总体评级：🟢 良好+偏优
 
 | 维度 | 评分 | 说明 |
 |------|:----:|------|
-| 算法科学性 | 88 | 10+4项修复，趋势/异常/聚类/评分全链路稳定 |
-| 视觉一致性 | 85 | 三套CSS统一设计令牌，内嵌样式全外部化，颜色字体统一 |
-| 交互安全性 | 82 | XSS/CSRF修复, safeFetch统一, alert→toast, console.log清理 |
-| 安全性 | 85 | CSRF+密码加密+盐值外置+异常脱敏+Magic bytes校验（第12轮↑） |
-| 代码架构 | 81 | 蓝图7→精简，shim死码清除，CSS外部化完成（第12轮↑） |
-| 工程规范 | 77 | ApiResponse统一响应+deprecation标注；待lint/format（第12轮↑） |
-| 生产就绪度 | 82 | Gunicorn多worker+APScheduler+健康检查+异常脱敏（第12轮↑） |
+| 算法科学性 | 90 | 趋势/异常/聚类/评分全链路稳定 + 报告摘要幅值维度补齐 |
+| 视觉一致性 | 87 | 三套CSS统一设计令牌 + 报告体系六维重构（封面/目录/评分明细表/页眉脚） |
+| 交互安全性 | 83 | XSS/CSRF修复, safeFetch统一, alert→toast, console.log清理 |
+| 安全性 | 85 | CSRF+密码加密+盐值外置+异常脱敏+Magic bytes校验 |
+| 代码架构 | 82 | 报告导出三层架构（exporter/renderer/data_export），死代码清除 |
+| 工程规范 | 78 | ApiResponse统一响应+Type hints；待lint/format |
+| 生产就绪度 | 82 | Gunicorn多worker+健康检查+异常脱敏+PDF静态图继承 |
 
 ### 7.2 六部关键发现（2026-05-12 最新审查：第9-19轮合并）
 
@@ -434,7 +473,13 @@ n < 8: 直接 Modified Z-score（小样本更稳健）
 | 第二十九轮：工程健壮性提升 | 6项 | ✅ 全部有效 |
 | 第三十轮：工程健壮性续+TRAE文档同步 | 6项 | ✅ 全部有效 |
 | 第三十一轮：导出文件中文命名 | 3项 | ✅ 全部有效 |
-| **合计** | **170项** | **100%** |
+| 第三十七轮：ML页面数据兼容性修复 | 3项 | ✅ 全部有效 |
+| 第三十八轮：ML页面结构性重构+合并重复实现 | 6项 | ✅ 全部有效 |
+| 第三十九轮：报告体系六维重构 + 图表双轨兜底 | 12项 | ✅ 全部有效 |
+| 第四十轮：技术债务清理 | 5项 | ✅ 全部有效 |
+| 第四十一轮：接口漂移测试全量修复 | 14项 | ✅ 全部有效 |
+| 第四十二轮：ShareLinkManager拆分 + 测试基线清零 | 3项 | ✅ 全部有效 |
+| **合计** | **222项** | **100%** |
 
 ### 7.4 待改进项优先级
 
@@ -442,15 +487,17 @@ n < 8: 直接 Modified Z-score（小样本更稳健）
 
 **本月**:
 1. ~~迁移 `project_statistics.py` → `app/services/`~~ ✅ 第十二轮已确认已就位
-2. 拆分 `database_connections.py`
+2. ~~拆分 `database_connections.py`~~ ✅ 已完成：42行兼容shim，逻辑在 `app/models/db_connection_config.py` + `app/services/connection_manager.py` + `connection_tester.py`
 3. ~~添加 `ApiResponse` 类~~ ✅ 第十二轮已创建
 4. ~~生产环境异常信息脱敏~~ ✅ 第十二轮已修复
+5. ~~`services/report_exporter.py` 400 行压线~~ ✅ 第四十二轮已拆分：ShareLinkManager → `services/share_link_manager.py`，有效代码 400→329 行
+6. ~~修复 `test_data_processing.py`(1) + `test_data_validator.py`(2) 既有失败~~ ✅ 第四十二轮已清零：空文件检测抛 ValueError（两副本）+ 测试对齐当前 API；全量 64 passed
 
 **下月**:
-5. python-dotenv 集成
-6. ruff+black+mypy
-7. flask-limiter
-8. ~~`_html_exporter_css()` Python内嵌CSS外部化~~ ✅ 第十二轮已完成（web端+Python端全部外部化）
+7. python-dotenv 集成
+8. ruff+black+mypy
+9. flask-limiter
+10. ~~`_html_exporter_css()` Python内嵌CSS外部化~~ ✅ 第十二轮已完成（web端+Python端全部外部化）
 
 ---
 

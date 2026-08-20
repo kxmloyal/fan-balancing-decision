@@ -13,7 +13,9 @@ class ResetManager {
      * 初始化所有重置按钮
      */
     initResetButtons() {
-        document.querySelectorAll('[data-reset="true"], .reset-button, #resetButton, #resetConnectionBtn').forEach(button => {
+        // 注意：#resetButton 由 page-initializer.js 独占绑定（服务端 /reset + 刷新），
+        // 此处排除，避免同按钮双绑定导致两个 confirm 弹窗与互斥操作
+        document.querySelectorAll('[data-reset="true"], .reset-button, #resetConnectionBtn').forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.handleResetClick(button);

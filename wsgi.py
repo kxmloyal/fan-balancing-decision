@@ -117,7 +117,10 @@ os.environ["CRYPTO_SALT"] = _crypto_salt
 
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["PERMANENT_SESSION_LIFETIME"] = 3600
-app.config["SESSION_FILE_DIR"] = os.path.join(BASE_DIR, "flask_session_new")
+# 会话目录支持环境变量覆盖：开发/测试服务器必须与生产隔离（避免权限冲突）
+app.config["SESSION_FILE_DIR"] = os.environ.get("SESSION_FILE_DIR") or os.path.join(
+    BASE_DIR, "flask_session_new"
+)
 
 session_dir = app.config["SESSION_FILE_DIR"]
 os.makedirs(session_dir, exist_ok=True)
@@ -376,6 +379,7 @@ def _register_blueprints(app):
         from blueprints.analysis_bp import analysis_bp
         from blueprints.main_bp import main_bp
         from blueprints.ml_bp import ml_bp
+        from blueprints.model_monitor_bp import model_monitor_bp
         from blueprints.outputs_bp import outputs_bp
         from blueprints.report_bp import report_bp
         from blueprints.settings_bp import settings_bp
@@ -391,6 +395,7 @@ def _register_blueprints(app):
     app.register_blueprint(outputs_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(analysis_bp)
+    app.register_blueprint(model_monitor_bp)
     logger.info("蓝图注册完成")
 
 
@@ -431,12 +436,16 @@ def handle_500(error):
 @app.errorhandler(Exception)
 def handle_generic_exception(error):
     from flask_wtf.csrf import CSRFError as _CSRFError
+    from werkzeug.exceptions import HTTPException
 
     if isinstance(error, _CSRFError):
         if request.path == "/frontend-analytics":
             return jsonify({"success": False, "message": "分析数据已接收"}), 200
         logger.error("CSRF验证失败: %s", str(error))
         return jsonify({"success": False, "message": "安全验证失败，请刷新页面后重试"}), 400
+    if isinstance(error, HTTPException):
+        # 405/404/400 等 HTTP 语义异常按原生状态码返回，避免被统一吞成 500
+        return error
     logger.error("未捕获异常: %s", str(error), exc_info=True)
     user_friendly = "服务器内部错误，请稍后重试"
     if app.debug:
@@ -470,9 +479,15 @@ def before_request():
 def after_request(response):
     # 静态文件长期缓存（nginx 也会处理 gzip，Python 层不再做压缩以减少 CPU 开销）
     if request.path.startswith("/static/"):
-        response.cache_control.max_age = 2592000  # 30 天
+        response.cache_control.max_age = 300  # 5 分钟（活跃迭代期防浏览器旧缓存；发布稳定后可调回 2592000）
         response.cache_control.public = True
         response.headers["X-Content-Type-Options"] = "nosniff"
+    else:
+        # 动态页面禁用缓存：页面含 csrf_token，缓存会导致 reset/session 变更后
+        # 浏览器继续使用旧 token 提交表单，触发 "CSRF tokens do not match"
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
     return response
 
 

@@ -193,4 +193,5 @@ logs/
 *.log
 data.db
 data.db-journal
+app.db
 .claude/

@@ -7,8 +7,9 @@
     <!-- 使用本地资源加载Bootstrap和相关库 -->
     <link href="{{ url_for('static', filename='libs/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='libs/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/upload.css') }}" rel="stylesheet">
+    <!-- 静态版本号 ?v=9：前端资源变更后递增此数值，规避 30 天强缓存导致旧 JS/CSS 残留 -->
+    <link href="{{ url_for('static', filename='css/style.css') }}?v=9" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/upload.css') }}?v=9" rel="stylesheet">
 </head>
 <body>
     <!-- 导航栏 -->
@@ -140,7 +141,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
         </form>
 
 
@@ -262,9 +262,9 @@
                                         <thead>
                                             <tr>
                                                 <th>转速</th>
-                                                <th>P1面得分</th>
-                                                <th>P2面得分</th>
-                                                <th>ST面得分</th>
+                                                {% if evaluation_report.has_p1 %}<th>P1面得分</th>{% endif %}
+                                                {% if evaluation_report.has_p2 %}<th>P2面得分</th>{% endif %}
+                                                {% if evaluation_report.has_st %}<th>ST面得分</th>{% endif %}
                                                 <th>总得分</th>
                                             </tr>
                                         </thead>
@@ -272,9 +272,15 @@
                                             {% for speed, scores in evaluation_report.speed_detailed_scores.items() %}
                                             <tr {% if speed in evaluation_report.best_speeds %}class="table-success"{% endif %}>
                                                 <td>{{ speed }}</td>
+                                                {% if evaluation_report.has_p1 %}
                                                 <td>{{ "%.2f" | format(scores.P1.face_score) if scores.P1.face_score is not none else '-' }}</td>
+                                                {% endif %}
+                                                {% if evaluation_report.has_p2 %}
                                                 <td>{{ "%.2f" | format(scores.P2.face_score) if scores.P2.face_score is not none else '-' }}</td>
+                                                {% endif %}
+                                                {% if evaluation_report.has_st %}
                                                 <td>{{ "%.2f" | format(scores.ST.face_score) if scores.ST.face_score is not none else '-' }}</td>
+                                                {% endif %}
                                                 <td>{{ "%.2f" | format(scores.total_score) if scores.total_score is not none else '-' }}</td>
                                             </tr>
                                             {% endfor %}
@@ -437,11 +443,11 @@
 
     {% if plots %}
     <script defer src="{{ url_for('static', filename='libs/plotly/plotly.min.js') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/simple-plotly-manager.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/simple-plotly-manager.js', v='20260820') }}"></script>
     <script defer src="{{ url_for('static', filename='js/plotly-chart-builders.js') }}"></script>
     <script defer src="{{ url_for('static', filename='js/plotly-theme-manager.js') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/chart-yaxis-align.js') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/chart-yaxis-align.js', v='20260820') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/charts.js') }}?v=9"></script>
     <script defer src="{{ url_for('static', filename='js/modal-manager.js') }}"></script>
     <script>
         // 模态框管理器实例化 — 处理图表点击放大
@@ -451,7 +457,7 @@
             }
         });
     </script>
-    <script defer src="{{ url_for('static', filename='js/page-initializer.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/page-initializer.js') }}?v=9"></script>
     {% endif %}
 
     <script defer src="{{ url_for('static', filename='js/reset-manager.js') }}"></script>

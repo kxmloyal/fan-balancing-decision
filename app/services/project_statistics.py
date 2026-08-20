@@ -1,4 +1,5 @@
 import os
+import statistics
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -17,7 +18,7 @@ FACE_INTERNAL_WEIGHTS = {
 
 def _load_face_weights():
     try:
-        from app.utils.config_manager import ConfigManager
+        from utils.config_manager import ConfigManager
 
         cm = ConfigManager()
         return cm.get_face_weights()
@@ -260,6 +261,7 @@ def calculate_face_score(
     face_weight_key: str = None,
     magnitude_factor: Optional[Dict[str, float]] = None,
     face_key: str = None,
+    iqr_median: Optional[Dict[str, float]] = None,
 ) -> Tuple[float, Dict[str, Any]]:
     """
     计算单个面的得分（三维度：IQR稳定性 + CV稳定性 + 量值合理性）
@@ -271,6 +273,8 @@ def calculate_face_score(
         face_weight_key: 权重字典中查找的关键字（如'P1'、'P2'、'ST'）
         magnitude_factor: 各面在当前转速下的量值合理性因子
         face_key: 面标识键（如'p1', 'p2', 'st'）
+        iqr_median: 各面在全部转速下的中位 IQR（按 face_key 索引），
+                    用于消除 IQR 量纲差异对 40% IQR 权重的稀释
 
     Returns:
         tuple: (face_score, detailed_face_score)
@@ -299,6 +303,12 @@ def calculate_face_score(
 
             if cv_val is not None and cv_val != float("inf"):
                 iqr_score = 1.0 / (1.0 + iqr_val)
+                # IQR 以该面所有转速的中位 IQR 归一化：消除量纲（g·mm）差异，
+                # 避免量级大的面上 IQR 得分恒趋近 0 而稀释 40% IQR 权重
+                if iqr_median:
+                    med = iqr_median.get(face_key) or iqr_median.get(face_prefix)
+                    if med:
+                        iqr_score = 1.0 / (1.0 + iqr_val / med)
                 cv_score = 1.0 / (1.0 + cv_val / 100.0)
 
                 mag_score = 1.0
@@ -366,6 +376,18 @@ def calculate_optimal_speed_evaluation(
         ("ST", "ST面", "st"),
     ]
 
+    # 各面在全部转速下的中位 IQR（用于 IQR 得分归一化，消除量纲差异）
+    iqr_medians: Dict[str, Optional[float]] = {}
+    for _, face_prefix, face_key in face_processing:
+        vals = []
+        for row in stats_data:
+            key = f"{face_prefix}-IQR"
+            try:
+                vals.append(float(row[key]))
+            except (KeyError, ValueError, TypeError):
+                pass
+        iqr_medians[face_key] = statistics.median(vals) if vals else None
+
     for row in stats_data:
         speed = row["转速"]
         total_score = 0.0
@@ -410,6 +432,7 @@ def calculate_optimal_speed_evaluation(
                 face_weight_key=face_name,
                 magnitude_factor=magnitude_factor,
                 face_key=face_key,
+                iqr_median=iqr_medians,
             )
             total_score += face_score
 
@@ -830,6 +853,14 @@ def generate_single_surface_stats(
 
         # 使用统一的加权评分法确定最优转速
         if stats_data:
+            # 各转速 IQR 的中位数（用于 IQR 得分归一化，与三维评分保持一致）
+            iqr_vals = [
+                float(r["IQR（四分位距）"])
+                for r in stats_data
+                if r["IQR（四分位距）"] != "-"
+            ]
+            iqr_med = statistics.median(iqr_vals) if iqr_vals else None
+
             # 计算每个转速的综合得分（基于IQR和CV）
             speed_scores: Dict[str, float] = {}
 
@@ -843,8 +874,10 @@ def generate_single_surface_stats(
                 )
 
                 if iqr_val is not None and cv_val is not None and cv_val != float("inf"):
-                    # 归一化处理，值越小得分越高
+                    # 归一化处理，值越小得分越高；IQR 按中位 IQR 归一化消除量纲
                     iqr_score = 1.0 / (1.0 + iqr_val)
+                    if iqr_med:
+                        iqr_score = 1.0 / (1.0 + iqr_val / iqr_med)
                     cv_score = 1.0 / (1.0 + cv_val / 100.0)  # CV是百分比，适当缩放
                     # IQR和CV各占50%权重
                     score = 0.5 * iqr_score + 0.5 * cv_score

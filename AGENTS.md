@@ -97,7 +97,7 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 
 ---
 
-# 项目状态 (2026-05-16) ⭐ 最新
+# 项目状态 (2026-08-20) ⭐ 最新
 
 ## 项目定位
 
@@ -139,7 +139,192 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 - **第三十一轮**：导出文件中文命名（3项）
 
 ## 最近重大变更
-## 最近重大变更
+
+### 第四十二轮修复：ShareLinkManager 拆分 + 测试基线清零（2026-08-20）
+
+执行 P0 技术债：拆分 400 行压线的 `report_exporter.py`，并将 3 个既有失败测试用例清零（全量 64 passed）：
+
+| 优先级 | 修复项 | 文件 | 说明 |
+|--------|--------|------|------|
+| P0 | ShareLinkManager 独立 | `services/share_link_manager.py`（新建） | `report_exporter.py` 有效代码 400 行压线（100%）→ 拆分后 329 行（82%）；share link 5 方法（create/revoke/get/list + 读写）整体迁移，`report_exporter.py` 改导入，根级转发层零改动 |
+| P0 | 空文件检测 ValueError | `data_processing.py` + `app/services/data_processing.py` | 空 CSV 原走编码循环抛 `Exception("无法识别编码")`，与 `parse_single_surface_file` 契约不符（期望 `ValueError`）；`getsize()==0` 提前抛 `ValueError("文件内容为空")`，两副本同步 |
+| P1 | 测试对齐当前 API | `tests/test_data_validator.py` | 2 用例过时：`validate_and_align_data` 断言旧"填充30点"→ 当前截断到 `min_length`；`generate_data_warning` 用旧 data_info 键（p1_valid/is_complete）→ 当前 `aligned_length/p1_has_nan` 结构，补 NaN 过滤/警告分支断言 |
+
+**结果**：全量 `pytest tests/` **64 passed**（此前 3 个既有失败：`test_parse_single_surface_file_empty` + `test_data_validator`×2 全部清零），7 warnings 均为既有 sklearn R² 与 pytest return 提示，与本次无关。
+
+### 第四十三轮修复：报告与前端三差异对齐（评分明细/表格样式/图表布局）（2026-08-20）
+
+用户对比浏览器前端与分析报告，指出 3 项差异并确认业务逻辑（"评分明细只展示有数据的面 + 0 分计入总分"）。全链路修复：
+
+| 优先级 | 修复项 | 文件 | 说明 |
+|--------|--------|------|------|
+| P0 | 报告 has_* 死逻辑修复 | `services/report_renderer.py` | `_build_context` 原用 `bool(evaluation.get("has_p*")) or any(k.startswith("P*") for k in scores)`——scores 键是转速而非面，`startswith` 恒为 False 的死判定；新增 `_has_face_scores()` 以 face_score 是否非 None 判定面是否有数据，has_* 键仅作兼容兜底 |
+| P0 | 评分明细只展示有数据的面 | `services/report_renderer.py` | `face_labels` 动态列（仅 has 的面），`_render_scores` 表头与单元格均按 face_labels 渲染，无数据面不显示列 |
+| P0 | 前端评分表动态列 | `templates/index.html` | 表头与单元格改用 `{% if evaluation_report.has_p1 %}` 等条件包裹，与报告"只展示有数据的面"对齐；0 分计入总分逻辑在算法层（`calculate_face_score` 缺键返回 0.0 加权）保持不变 |
+| P1 | 报告表格样式对齐前端 | `report_export_css.py` | EXPORTER_CSS 补 Bootstrap 兼容类（`.table`/`.table-striped`/`.table-success` 等）+ `.table-statistics` 系列面配色（对齐前端 style.css L732-773），stats_html 在报告中视觉与前端一致 |
+| P1 | 报告图表布局对齐前端 | `services/report_renderer.py` | 并列布局"面为列"（chart-row > chart-col，`.chart-col{flex:1;min-width:300px}`）；修复 `_SURFACE_NAMES`（sum→ST面/single→单面）+ `_resolve_surface_name` 处理单面场景 |
+| P1 | 新增面列测试 | `tests/test_report_renderer_faces.py`（新建） | 2 用例：`test_scores_only_available_faces`（P1-only 报告评分明细仅 P1 列）+ `test_scores_face_scores_fallback_without_has_keys`（无 has_* 键时以 face_score 兜底）；定位用 `html.split('id="sec-scores"')[1]`（勿用章节名分割——TOC 重复出现） |
+| P1 | 图表缓存跨目录失效修复 | `app/utils/chart_resource_manager.py` + `chart_generation_optimized.py` | 差异3验证发现真实 bug：`chart_id` 仅由数据 hash 派生，缓存命中复用首次生成的完整路径——不同型号/输出目录分析相同数据时，二次报告按 basename 拼当前目录找不到图（"暂无预览"）。修复：① `generate_chart_id` 增加 scope 参数（model_output_dir 短哈希入 id，不同目录不同 id）；② `is_chart_generated` 增加 `os.path.exists(png_path)` 校验，缓存路径失效视为未生成并重建 |
+
+**结果**：全量 `pytest tests/` **66 passed**（64 + 2 新增）；P1-only 真实链路端到端验证通过——算法层 `has_p2=False`/`has_st=False`、total=0.4×P1 得分（0 分计入总分），前端评分明细仅 P1 列，导出报告评分明细仅 `<th class="face">P1面</th>` 列。另确认此前"Jinja 渲染与磁盘模板不符"为验证脚本假警报（`plots={}` 空 dict 导致模板 L200 `{% if plots %}` 分析结果区域整体不渲染），非模板缓存问题。
+
+差异2/3 验证：三面完整数据（P1+P2+ST）生成报告，EXPORTER_CSS 14 项 Bootstrap/table-statistics 类全部命中，stats_html 三面表格完整渲染；parallel 布局 `.chart-row > .chart-col` 三面三列、stacked 布局 `.chart-group` 三面堆叠，两布局报告均嵌入 base64 图表；跨型号同数据（MODEL-A/B）两份报告均含图（缓存修复验证通过）。
+
+### 第四十四轮修复：报告导出链路 + 重置 CSRF 全链路收尾（2026-08-20）
+
+用户端到端验收（上传→分析→导出→重置）发现 4 项真实缺陷，全部修复并经真实链路验证（17:39 导出 `outputs/9324/9324_动平衡分析报告_20260820_173912.html` 含全部修复，66 测试全通过）：
+
+| 优先级 | 修复项 | 文件 | 说明 |
+|--------|--------|------|------|
+| P0 | face_labels 匹配恒 False | `services/report_renderer.py` | 评分明细数据行用 face 键 `"P1"` 与 `face_labels` 存的标签 `"P1面"` 做 `in` 判断恒 False → P2/综合得分列永远无数据；改为 `label in face_labels` 按标签匹配 |
+| P0 | 箱线图缺中位数折线 | `services/report_constants.py` | `PLOTLY_DUAL_TRACK_SCRIPT` 双轨交互图 box 分支只画箱体，替换掉含折线的静态 PNG（与前端不一致）；叠加中位数 scatter 虚线（对齐 `plotly-chart-builders.js`），`len>1` 时渲染 |
+| P0 | 导出文件写入不可见位置 | `blueprints/report_bp.py` | gunicorn CWD 异常 + `_init_report_exporter` 内 `hasattr(exporter,"output_folder")` 因构造时已设相对路径恒 False → `init_app` 永不执行，绝对路径不生效，报告"消失"；强制 `exporter.init_app(app)` + `load_export_history()` |
+| P0 | 重置后 CSRF 失效 400 | `blueprints/main_bp.py` + `wsgi.py` | 双根因：① `/reset` 的 `session.clear()` 删除 `csrf_token`，Flask-WTF 下次渲染生成新 token，浏览器（bfcache/缓存）仍持旧 token → 上传必 400；修复为 clear 前保存、clear 后恢复 token 不轮换；② 动态页面无缓存头导致旧 token 页面被缓存 → `after_request` 对非 `/static/` 响应加 `Cache-Control: no-store, no-cache, must-revalidate` + `Pragma: no-cache` + `Expires: 0` |
+
+**结果**：全量 `pytest tests/` **66 passed**；curl 实测动态页返回 no-store 头；test_client 验证重置前后 token 一致（`T1==T3`）、重置后用旧 token 提交 302 成功；17:39 真实导出报告 `P1面`×6 + `P2面`×6 + `综合得分`×4 三列齐全、`中位线` 出现、`chart-row/flex-wrap` 并列布局命中。控制台 "loaded over an insecure connection" 为 HTTP 访问时 Chrome 例行提示，非错误（部署 HTTPS 可消除）。
+
+### 第四十五轮修复：导出报告全维度审查整改（2026-08-20）
+
+三省六部全链路评审导出功能（report_bp → report_exporter → report_renderer / report_data_export / share_link_manager + 前端入口），裁决 1 🔴 + 8 🟡 全部落地，新增 7 个测试用例，全量 **73 passed**：
+
+| 修复项 | 文件 | 说明 |
+|--------|------|------|
+| CSV 空统计导出必失败 | `services/report_data_export.py` + `blueprints/report_bp.py` | 无统计数据时原返回不存在的文件路径 → send_file 404、提示缺失；现抛 `ValueError("暂无统计数据...")`，路由层精确 flash |
+| 型号 ".." 目录穿越拦截 | `utils/model_utils.py` + `blueprints/main_bp.py` | `sanitize_model_name` 拦截 "."/".."/点开头 → "未分类"（`os.path.join(outputs,"..")` 会把报告写进父目录）；main_bp 校验层双保险 |
+| 删除死方法 | `services/report_exporter.py` | `_clean_base64_cache` 零调用 + 淘汰语义错误（用文件 mtime 当缓存时间戳），直接删除 |
+| PDF 路径 + 配置透传 | `services/report_exporter.py` | PDF 原写 `outputs/` 根目录（与 history 的 model_dir 漂移）→ 对齐写入型号子目录；并修复 PDF 分支 `report_config` 不生效 bug（此前 `export_report_from_session` 不透传配置） |
+| 原子写 | `services/report_exporter.py` + `services/share_link_manager.py` | 导出历史 `export_history.json` 与分享链接 `shareable_links.json` 改 temp + `os.replace`，防多 worker 并发写坏 |
+| 导出 GET → POST | `blueprints/report_bp.py` + `static/js/export-manager.js`(新建) + 4 模板 + `guide.js` + `wsgi.py` | 导出是写文件副作用，改 POST-only（全局 CSRF 生效）；前端统一 fetch POST + blob 下载（CSRF token 经 navbar 宏全局注入）；wsgi 通用异常处理器放行 werkzeug HTTPException（405 不再被吞成 500）；guide 引导选择器同步 |
+| 死参数收敛 | `blueprints/report_bp.py` + `templates/report.html` | 删除 `include_raw_data`（零消费）、`report_settings` 死数据、`_check_export_format` 的 `method` 键、report.html "包含原始数据" 无效 checkbox |
+| 性能 + 日志 | `services/report_exporter.py` + `services/share_link_manager.py` | `export()` 对 csv/json/excel 跳过整树 `_sanitize_session_data` 深拷贝（三格式仅消费标量，无 HTML 渲染面）；logging f-string 改 `%s` 惰性求值 |
+
+**结果**：`pytest tests/` **73 passed**（新增 `tests/test_export_route.py` 4 用例：GET 405 / POST+CSRF 200 / CSV 空数据 302+提示 / 无 token 400；`test_report_exporter.py` 新增 3 用例：CSV 空抛 ValueError / sanitize 拦截 ".." / PDF report_config 透传）。全部文件 `py_compile` SYNTAX_OK。
+
+### 第四十六轮修复：默认Y轴对齐（2026-08-20）
+
+用户要求"默认Y轴对齐"（首页 + 导出报告都默认对齐），覆盖 3 个文件 + 1 项现状确认：
+
+| 修复项 | 文件 | 说明 |
+|--------|------|------|
+| 首页图表加载后自动对齐 | `static/js/chart-yaxis-align.js` | 新增 `autoAlignOnce()`：DOM 加载后轮询图表就绪（≤10s），自动执行 align + 按钮置"Y轴已对齐"；timer 防重复轮询 |
+| 首页重绘后保持对齐 | `templates/_charts_partial.html` | reinitPlotlyCharts 末段由"重绘后 reset"改为：已对齐 → `realignIfAuto()` 重新对齐；未对齐 → `autoAlignOnce()` |
+| 报告双轨交互图统一量程 | `services/report_constants.py` | `PLOTLY_DUAL_TRACK_SCRIPT` renderAll 两遍渲染：第一遍收集 box/violin/trend/scatter/bubble/histogram 全部 Y 值 → 全局 range（±5% padding）+ niceDtick；第二遍对可对齐类型注入 `layout.yaxis = {range, dtick}`（3d/parallel/heatmap 跳过） |
+| 现状确认（无需改动） | `chart_generation_optimized.py` L121-128 | 报告静态 PNG 生成时已按 P1/P2/ST 全局 y_range 跨面对齐 |
+
+**结果**：`node --check` JS 语法 OK；14 项相关测试全通过（0 失败）；真实导出报告 SMOKE_PASS（含 ALIGNABLE_TYPES / yaxis range / niceDtick / 中位线 / 静态图兜底）。
+
+### 第四十七轮修复：堆叠显示图表右侧空白（2026-08-20）
+
+用户反馈"堆叠显示的时候图表右边有空白"。浏览器实测确认根因：**不是容器宽度问题**（容器已 100% 占满），而是 Plotly 图内部空白——box 图默认右 margin 50px + 类别轴 autoexpand 扩展，右侧纯空白约 152px（占容器 16.8%），左侧被 y 轴刻度占据，视觉明显右偏空。
+
+| 修复项 | 文件 | 说明 |
+|--------|------|------|
+| 首页 box/violin 收紧类别轴 + 收小右 margin | `static/js/simple-plotly-manager.js` | `initChart` 中按 trace 收集唯一类别 → `xaxis.type='category'` + `range=[-0.5, n-0.5]` 贴合末类，`margin.r=10` |
+| 报告双轨交互图同步 | `services/report_constants.py` | renderAll 第一遍收集 box/violin 类别（`alignCats`），第二遍注入 xaxis range + margin.r=10，与前端一致 |
+
+**验证**：browser_use 真实渲染实测——修复后两个箱线图右侧空白均为 11px ≈ **1.22%**（修复前 16.8%），达标（目标 1-2%）；`node --check` / `py_compile` OK；8 项相关测试全通过。
+
+### 第五十七轮修复：报告页有效性/科学性全链路整改（2026-08-20）
+
+评审报告页「有效性、科学性、链路用途」后修复：导出表单选项 6 项全失效（request.args 读取 POST body）、死开关、死选项，并打通报告页与 FS 资产闭环、IQR 评分无量纲化。全量 **90 passed**（86 + 4 新回归）：
+
+| 修复项 | 文件 | 说明 |
+|--------|------|------|
+| P0-1 表单选项失效根因 | `blueprints/report_bp.py` | `include_charts/include_stats/include_evaluation/include_recommendations/report_title/export_format` 用 `request.args`（仅查询串）读取，表单 POST body 提交恒取默认值 → 统一改 `request.values` |
+| P0-2 死开关接线 | `services/report_renderer.py` | `include_evaluation` 原来读取后从未入 report_config 且 renderer 无消费 → 接线为「评分明细章节」门控（`include_scores` 兼容旧名）；`include_recommendations` 原来 config 有但 renderer 恒显示 → 接线为「建议章节」门控 |
+| export_format 死选项实现 | `report_export_css.py` + `report_renderer.py` | standard/compact/detailed 原仅校验不实现 → body 类 `report-compact/report-detailed` + CSS 字号/间距微调，样式选择真正生效 |
+| report_title 死选项接线 | `report_renderer.py` | 封面 h1 与 `<title>` 原硬编码 → 使用 config.title |
+| P1-2 报告页 FS 闭环 | `blueprints/report_bp.py` + `templates/report.html` | `/report` 展示最近导出的报告（export_history 前 8 条：型号/格式/时间/下载），不再与已导出资产脱节 |
+| 科学性 IQR 无量纲化 | `app/services/project_statistics.py` | `iqr_score = 1/(1+iqr)` 有量纲（g·mm），量级大的面上 IQR 得分恒趋近 0 稀释 40% IQR 权重 → 按面内全部转速「中位 IQR」归一化 `1/(1+iqr/med)`；中位=0 防除零回退；三维评分（calculate_face_score）与单面路径两处同步；报告方法文案补充归一化说明 |
+| 回归测试 | `tests/test_export_route.py` + `tests/test_statistics.py` | 新增表单 body 选项生效用例（标题/样式/4 开关全断言）；新增 IQR 归一化 3 用例（归一化得分恢复判别力、中位=0 防除零、端到端冒烟） |
+
+**结果**：全部表单选项经冒烟验证真实生效；90 项测试全过。
+
+### 第五十五轮修复：深入分析除零500 + 前端 progressFill 作用域（2026-08-20）
+
+深入分析页报「评估失败 + ReferenceError: progressFill is not defined」两连错，全链路定位并修复：
+
+| 修复项 | 文件 | 说明 |
+|--------|------|------|
+| 后端除零 500 根因 | `app/services/data_analysis.py` `_compute_z_scores` | 某面（st/p2）无数据时 `_compute_z_scores` 收到空数组/单元素，`np.std(data, ddof=1)` 在 n<=1 时 numpy 内部 Python 除法路径抛 ZeroDivisionError → 深入分析 500「异常检测失败：division by zero」（首页 p1/p2 分析无 st 面必触发）。修复：n==0 提前返回「无数据」；sigma 计算 `float(np.std(...)) if n > 1 else 0.0` 走「无变异性」分支 |
+| 前端 progressFill 作用域 | `static/js/in_depth_analysis_enhanced.js` `setupFormSubmit` | `progressFill/progressInterval/progressDiv/progressPercent/requestPhase` 原声明在 try 块内（块级作用域），catch 块引用抛 ReferenceError；全部提升到 submit handler 函数体顶部 |
+| 错误透出 | `blueprints/analysis_bp.py` 深入分析端点 | 笼统消息「深入分析失败，请稍后重试」→ 与技能评估端点一致透出真实错误 `{str(e)}`，避免黑盒 |
+| 回归测试 | `tests/test_skill_evaluation_regression.py`（新增 3 用例） | st 空 / 仅 p1 / 缺 sum_samples 键三种退化面数据不再抛异常 |
+
+**结果**：复现脚本（真实格式数据 + 无 st 面）原 4 场景 FAIL → 修复后全部 OK；全量 pytest **84 passed**（81 + 3 新回归）；JS 语法校验通过。
+
+### 第五十四轮修复：全项目冗余/功能重叠全链路评审整改（J1-J4 四方案落地）（2026-08-20）
+
+用户要求全链路评审全项目冗余功能与功能重叠，输出 J1-J4 四方案并全部批准实施。四域（前端JS/图表链路/蓝图路由/服务工具层）排查 + 全链路依赖校验后落地，全量 **81 passed**：
+
+| 方案 | 修复项 | 文件 | 说明 |
+|------|--------|------|------|
+| J1 | 死代码清理（7 组 0 引用） | `static/js/app.js`、`static/js/components/ChartComponent.vue`、`static/js/types/index.js.map`、`exporters/` 整包、顶层 `project_statistics.py`、`app/services/statistics.py`、`ml_data_adapter.py` | 全部 0 引用（含 `from app.services.statistics` 无消费方）；同步清理 `app/services/__init__.py` 假存活重导出 |
+| J2 | #resetButton 双绑定解除 | `static/js/reset-manager.js` | 同按钮被 page-initializer.js（服务端 /reset+刷新）与 reset-manager.js（客户端清表单+formReset）双绑定，一次点击两 confirm+互斥操作；reset-manager 排除该按钮，服务端逻辑独占 |
+| J2 | toast 全局签名统一 `(type,message)` | `static/js/toast-helper.js` + `static/js/outputs.js` | 原 toast-helper 用 `(message,type)`，与 settings/skill_evaluation/in_depth_analysis 的 `(type,message)` 分叉，同页加载会覆盖导致参数错乱；统一为项目主流签名（4 处调用同步改） |
+| J2 | page-initializer 死函数清理 | `static/js/page-initializer.js` | 删除定义未调用的 `initChartLazyLoading`（第 4 份图表初始化副本） |
+| J3 | 图表初始化双重触发修复 | `static/js/match-result.js`（删除）+ `templates/match_result.html` | 该文件全文仅重复调用 `initAllChartFeatures`（charts.js DOMContentLoaded 已执行），导致每次页面加载初始化两次；删除冗余文件+移除模板引用 |
+| J4-1 | outputs_bp DB 分支可达性修复 | `blueprints/outputs_bp.py` | `from app import db` 因 app/__init__.py `__getattr__` 仅桥接 `"app"` 恒抛 AttributeError → DB 分支永不生效；改 `from db_models import db`；同时去掉 `_db_resources` 缓存（settings 保存配置置 DB_CONNECTED=True 后缓存 (None,None) 不失效的问题） |
+| J4-2 | 9 条死路由删除 | `blueprints/ml_bp.py` + `blueprints/settings_bp.py` + `blueprints/outputs_bp.py` | ml_bp 3 条（analyze_balance_data/cluster_balance_data/detect_outliers_iqr 审计确认无 UI 调用，同步清理 import）；settings_bp 5 条（load_db_config/reset_db_config/test_connection/face_weights/reload_db_connection，重载逻辑已内联于 save_db_config）；outputs_bp delete_output_file/`<int>`（int 转换器与 FS md5 hash id 矛盾且无调用方） |
+| J4-3 | 双份实现合并 | `app/services/data_processing.py` + `app/utils/config_manager.py`（删除） | 两份与顶层实现逐字重复；project_statistics 改用 `utils.config_manager`，`app/services/__init__.py` 清空假导出 |
+
+**结果**：全量 `pytest tests/` **81 passed**（73 + 机型监控 8）；`wsgi` 应用启动验证 70 路由、无死路由残留、templates 无已删文件引用；J3 颜色双源（`#2563eb` 服务端导出主题 vs `#1f77b4` 前端交互主题/数据面颜色）经核实为双路径语义不同非冲突、Y轴 niceDtick 服务端/前端双端架构必需，均保留不破坏已验收图表。
+
+### 第四十八轮修复：报告图表加载初期横向溢出（2026-08-20）
+
+用户重新导出报告（184252）仍见空白。browser_use 实测真实报告定位根因：**稳定状态右侧空白已为 0px**（第四十七轮修复生效），但**加载初期 Plotly 在隐藏容器（`style="display:none"`）中渲染**——`clientWidth=0` 时 Plotly 退回默认 700px 宽度，SVG 超出容器产生横向滚动条与右侧可滚动空白区；不触发 `window.resize` 不会自愈。
+
+| 修复项 | 文件 | 说明 |
+|--------|------|------|
+| 渲染前显示容器 + 显式设宽 + 渲染后校正 | `services/report_constants.py` | renderAll 第二遍：`container.style.display='block'` → `layout.width=container.clientWidth` → `newPlot` → `relayout({width})`，消除隐藏容器宽度误算 |
+
+**验证**：browser_use 实测新报告——加载全程（T0/T1/T2/T6）`scrollWidth=clientWidth=713`，无横向溢出；6 个 SVG 宽度均 = 容器宽度（603px）；`py_compile` OK；8 项相关测试全通过。已确认为纯 Python 模块变更，需重启 + 重新导出生效。
+
+### 第四十一轮修复：接口漂移测试全量修复（2026-08-20）
+
+第三十一轮重构删除了图表缓存/任务队列/批量导出等旧接口，`test_report_exporter.py`(8 失败) + `test_integration.py`(4 失败) 引用旧 API。全链路检索确认这些旧接口**生产代码零调用**（仅 `report_bp.py` 的 `create_shareable_link` 存活），故决策：**测试对齐当前 API，不恢复死接口**。过程中发现并修复 2 处真 bug：
+
+| 优先级 | 修复项 | 文件 | 说明 |
+|--------|--------|------|------|
+| P0 | HtmlExporter report_config 透传 | `services/report_exporter.py` | `export("html",...,report_config=)` 原直接 TypeError，现透传至 `render()` |
+| P0 | 章节开关不生效 | `services/report_renderer.py` | `_assemble` 原无条件渲染全部章节，`include_*` 仅过滤目录；现同时作用于目录与正文 |
+| P1 | 测试重写对齐 API | `tests/test_report_exporter.py` | 10→5 用例：删图表缓存×2/任务/队列死用例，改写 init/config/history/shareable |
+| P1 | 集成测试重写 | `tests/test_integration.py` | 6→4 用例：删 batch/queue，修 CSV 数据源（speed_detailed_scores）与 customization 断言 |
+| P1 | 测试目录隔离 | 两个测试文件 | `setUp` 用 `ReportExporter(output_folder=temp_dir)`，杜绝写污染项目 `outputs/export_history.json` |
+
+**结果**：12 个失败用例全部通过；全量回归失败 15 → 3（剩余 `test_data_processing`/`test_data_validator` 为既有基线，与重构无关）。
+
+### 第四十轮修复：技术债务清理（2026-08-19）
+
+| 优先级 | 修复项 | 文件 | 说明 |
+|--------|--------|------|------|
+| P1 | 常量迁移 | `services/report_constants.py`（新建） | `PLOTLY_CDN_URL` + `PLOTLY_DUAL_TRACK_SCRIPT` 从死代码迁移 |
+| P1 | 死代码文件删除 | `services/report_html_builder.py` | 702 行 `ReportHtmlBuilder`（已被 ReportRenderer 取代），删除前确认仅 1 处引用 |
+| P1 | 废弃方法删除 | `services/report_exporter.py` | `build_report_html` + `_build_charts` 226 行 + 清理无引用 `import base64` |
+| P2 | 构造函数兼容 | `services/report_exporter.py` | `ReportExporter.__init__` 支持 `output_folder` 参数，修复 `test_export_functions.py` 3 个 TypeError |
+| P2 | HTML 重复属性清理 | `templates/_charts_partial.html` | 8 处重复 `class` 属性合并（第二个覆盖第一个，HTML 无效） |
+
+### 第三十九轮修复：报告体系六维重构 + 图表双轨兜底（2026-08-19）
+
+六维报告评审（科学性/可读性/专业性/UI/布局排版）发现：摘要文案与算法不一致（幅值维度缺失）、内容脱节、双 CSS 视觉分裂；同时审计确认报告图表为 base64 PNG 静态图，不引用首页 div、不加载 Plotly。
+
+**方案四 — 图表静态图 + 交互双轨兜底**：
+
+| P0 | 双轨图表渲染 | `report_export_css.py` | `<img>` base64 静态图兜底 + `.chart-plotly-container` 隐藏交互容器，Plotly CDN 可用时渲染交互图并隐藏静态图，离线/异常保留静态图 |
+| P0 | 打印强制静态图 | `report_export_css.py` | `@media print` 强制显示静态图/隐藏交互层 |
+| P0 | PDF 自动继承 | weasyprint | 不执行 JS，PDF 天然使用静态图，无需额外适配 |
+
+**方案 A+/B+/C+ — 报告内容与排版重构**：
+
+| P0 | ReportRenderer 数据驱动渲染 | `services/report_renderer.py`（新建 ~356行） | 从 session_data 直接渲染，替换旧 ReportHtmlBuilder，`render(session_data, report_config)` |
+| P0 | 封面页 | `_render_cover` | 型号/测试机/日期/推荐转速 |
+| P0 | 目录锚点 | `_render_toc` + `#sec-*` | 六章编号导航，`include_*` 开关同步控制目录与正文 |
+| P0 | 评分明细表 | `_render_scores` | 每转速各端面得分，最优行高亮 `tr.best` + 最优徽标 |
+| P0 | 页眉页脚 | `_render_page_header`/`_render_page_footer` | 跨页品牌信息 |
+| P0 | 报告版本号 v2.0 | `_assemble` | 版本标识 |
+| P1 | 摘要补齐幅值维度 | `_render_summary` | 文案与算法一致（IQR 40% + CV 40% + 幅值 20%） |
+| P1 | 方法论补充说明 | `_render_methodology` | 归一化公式 + Z-score/MAD 异常过滤说明 |
+| P1 | 删除 ECharts CDN | `report_renderer.py` | 避免无效网络请求，统一 EXPORTER_CSS |
 
 ### 第二十二轮修复：预览功能失效 + 表头字体颜色回归（2026-05-13）
 
@@ -505,48 +690,58 @@ Hero 区域 `btn-outline-light` 按钮（白字透明底白边框）在浅色背
 | `blueprints/settings_bp.py` | 属性bug修复 |
 | `blueprints/database_bp.py` | 去重超时代码 |
 
-## 累计修复：186 项（38轮）
+## 累计修复：280 项（59轮）
 
----
-
-### 第十三轮修复：导出报告非box图表全维度评审修复（2026-05-12）
-
-导出报告只有箱线图正常显示，violin/heatmap/histogram/bubble/3d/parallel/radar 全部空白（16990字节占位图）。
-
-**根因**：`_generate_matplotlib_png()` 和 `_generate_plotly_html()` 仅实现 box/trend/scatter 3种图表渲染，chart_style_config.py 的 CHART_TYPE_CONFIG 定义10种类型但7种无渲染代码。空 figure 的 `savefig(bbox_inches='tight')` 触发异常 → 返回 False → 全部回退到占位图。
-
-| 优先级 | 修复项 | 文件 | 说明 |
-|--------|--------|------|------|
-| P0 | 7种图表类型 matplotlib PNG 渲染 | `chart_generation_optimized.py` | 新增 violin (violinplot), heatmap (imshow), histogram (hist), bubble (scatter+sizes), 3d (mplot3d scatter), parallel (中位数+均值双线), radar (polar填充) |
-| P0 | 7种图表类型 Plotly.js HTML 渲染 | `chart_generation_optimized.py` | 新增 violin/heatmap/histogram/bubble/3d/parallel/radar 类型 Plotly.newPlot 分支 |
-| P1 | 异常处理器扩宽 | `chart_generation_optimized.py` | `(ValueError, IOError, TypeError)` → `Exception` + traceback，防止非标准异常静默吞没 |
-| P1 | Agg 后端显式切换 | `chart_generation_optimized.py` | `plt.switch_backend('Agg')` 防止 gunicorn 无 GUI 环境后端问题 |
-| P1 | tight_layout 防御性包装 | `chart_generation_optimized.py` | 3d/parallel/radar 等可能产生 UserWarning 的类型 try/except 包装 |
-| P2 | 旧占位图清理 | `outputs/` | 删除12个 16990字节 MD5 一致的 fallback PNG |
-
-### 第十四轮修复：全模块排版统一宽屏适配（2026-05-12）
-
-各模块（仪表盘/报告/机器学习/深入分析/报告管理/设置）排版不统一，部分模块未适配宽屏。根因三类：CSS加载顺序错误（style.css在bootstrap之前）、缺失style.css引用、inline硬编码max-width阻断响应式。
-
-| 优先级 | 修复项 | 文件 | 说明 |
-|--------|--------|------|------|
-| P0 | CSS加载顺序修复 | `report.html`, `ml.html`, `settings.html` | bootstrap → bootstrap-icons → style.css（原style.css在bootstrap前被覆盖） |
-| P0 | 缺失style.css修复 | `skill_evaluation.html` | 新增style.css引用 + 移除旧:root(#3498db→#2563eb) + 移除重复body/card样式 |
-| P0 | inline阻断宽屏修复 | `ml.html` | 删除 `.container{max-width:1200px}` 硬编码 + 更新旧颜色(#007bff/#f8f9fa→设计令牌) |
-| P0 | skill_evaluation旧颜色修复 | `skill_evaluation.html` | --primary-color: #3498db → 统一使用style.css的#2563eb |
-
-### 第十五轮修复：报告管理预览功能全链路修复（2026-05-12）
-
-报告管理中文件预览功能存在6项缺陷：子目录路径路由不支持、下载路径引用错误、预览模态框下载链接使用文件系统路径等。根因：`<filename>` 路由转换器仅匹配单段路径，前端 `download_by_path` 路由名与后端不匹配。
-
-| 优先级 | 修复项 | 文件 | 说明 |
-|--------|--------|------|------|
-| P0 | 路由转换器升级 | `outputs_bp.py` | download_file/view_chart/view_chart_html 三路由 `<filename>` → `<path:filename>` + os.path.normpath + `..` 路径穿越防护 |
-| P0 | 预览路径包含型号子目录 | `outputs_bp.py` | preview_output_file / preview_output_info 构建 path 时检查 fan_model 并纳入型号子目录 |
-| P0 | 下载API路径修正 | `outputs.js` | 3处 `/api/outputs/download_by_path/` → `/api/outputs/download/`（对齐后端实际路由名） |
-| P1 | 预览模态框下载链接修复 | `outputs.js` | openPreview 函数重写：downloadBtn.href 从preview_info API获取正确下载URL，fallback .catch()为各类型构造对应视图URL |
-| P1 | 图片类型扩展 | `outputs.js` | 预览支持的图片格式从仅 `png` 扩展为 `['png', 'jpg', 'jpeg', 'svg', 'webp']` |
-| P1 | 文件卡片data-download-url | `outputs.js` | 预览按钮增加 data-download-url 属性，携带型号子目录路径的下载URL |
+| 轮次 | 内容 | 数量 |
+|------|------|------|
+| 第五轮 | 数据库安全加固 | 7项 |
+| 第七轮 | 核心算法科学性修复 | 10项 |
+| 第八轮 | 报告管理中心强化 | 6项 |
+| 第九轮 | 三省六部全维度审查优化 | 9项 |
+| 第十轮 | UI/视觉设计统一 | 9项 |
+| 第十一轮 | 交互性优化 | 11项 |
+| 第十二轮 | 全项目综合审查 | 11项 |
+| 第十三轮 | 导出报告非box图表修复 | 6项 |
+| 第十四轮 | 全模块排版统一宽屏适配 | 4项 |
+| 第十五轮 | 报告管理预览功能全链路修复 | 6项 |
+| 第十六轮 | 报告管理UI可访问性与CSRF修复 | 9项 |
+| 第十七轮 | 数据库删除失败 + 全面审查优化 | 15项 |
+| 第十八轮 | Hero按钮可见性 + 版面宽度统一 | 4项 |
+| 第十九轮 | 报告管理页面UI全面重设计 | 8项 |
+| 第二十轮 | Hero副标题可见性修复 | 1项 |
+| 第二十二轮 | 预览功能失效 + 表头字体颜色回归 | 2项 |
+| 第二十三轮 | Hero标题不可见根因修复 + 对比度全面提升 | 3项 |
+| 第二十四轮 | 预览功能全链路修复 | 6项 |
+| 第二十五轮 | 预览布局全面修复 | 5项 |
+| 第二十七轮 | 型号追踪管理体系全面建立 | 9项 |
+| 第二十八轮 | 安全加固+质量基线 | 9项 |
+| 第二十九轮 | 工程健壮性提升 | 6项 |
+| 第三十轮 | 工程健壮性续+TRAE文档同步 | 6项 |
+| 第三十一轮 | 导出文件中文命名 | 3项 |
+| 第三十七轮 | ML页面数据兼容性修复 | 3项 |
+| 第三十八轮 | ML页面结构性重构+合并重复实现 | 6项 |
+| 第三十九轮 | 报告体系六维重构 + 图表双轨兜底 | 12项 |
+| 第四十轮 | 技术债务清理 | 5项 |
+| 第四十一轮 | 接口漂移测试全量修复 | 14项（12用例+2真bug） |
+| 第四十二轮 | ShareLinkManager拆分 + 测试基线清零 | 3项 |
+| 第四十三轮 | 报告与前端三差异对齐（评分明细/表格样式/图表布局）+ 图表缓存跨目录修复 | 7项 |
+| 第四十四轮 | 报告导出链路 + 重置CSRF全链路收尾（face_labels/箱线图中位线/导出路径/CSRF token） | 4项 |
+| 第四十五轮 | 导出报告全维度审查整改（CSV空导出/路径穿越/PDF路径/原子写/POST化/死参数/性能/日志） | 8项 |
+| 第四十六轮 | 默认Y轴对齐（首页图表加载自动对齐/重绘保持对齐/报告双轨交互图统一量程） | 4项 |
+| 第四十七轮 | 堆叠显示图表右侧空白（box/violin 收紧类别轴 + margin.r，浏览器实测 16.8%→1.22%） | 1项 |
+| 第四十八轮 | 报告图表加载初期横向溢出（隐藏容器中 Plotly 默认 700px 渲染，渲染前显式设宽+relayout，实测 0 溢出） | 1项 |
+| 第四十九轮 | 三、统计分析结果表单与样本量左右并列（stats-row flex，消除右侧大空白，含打印降级） | 1项 |
+| 第五十轮 | Y轴统一标注单位「不平衡量 (g·mm)」（报告双轨交互图补 yaxis.title + matplotlib PNG 6处 + 首页图表 yAxisLabel） | 1项 |
+| 第五十一轮 | 统计分析结果并列布局视觉优化（等高 stretch + 卡片渐变/蓝色强调条 + 内距行距，宽屏实测并排等高） | 1项 |
+| 第五十二轮 | 各转速样本量移至「五、统计分析方法」末尾小字附注（原三、章节卡片移除，清理 stats-row/sample-card 样式与测试断言） | 1项 |
+| 第五十三轮 | 机型监控看板（按机型监控推荐平衡转速+使用设备；新增 model_monitor_service/蓝图/页面/JS，分析完成时记录，告警含停机/完整性/转速漂移，8新用例） | 1项 |
+| 第五十四轮 | 全项目冗余/功能重叠全链路评审整改（J1 死代码 7 组 + J2 双绑定/toast 签名/死函数 + J3 图表双重触发 + J4-1 DB 分支可达 + J4-2 九条死路由 + J4-3 双份实现合并） | 8项 |
+| 第五十五轮 | 深入分析除零500（退化面无数据 np.std n<=1 抛 ZeroDivisionError）+ 前端 progressFill 作用域 + 错误透出 + 3 回归用例 | 3项 |
+| 第五十六轮 | 数据仪表盘与机型监控合并（方案A）：仪表盘 DB 空壳→FS 真实取数（报告扫描+model_monitor.json 聚合）、机型监控区块并入仪表盘复用 model-monitor.js、删导航入口 + /model-monitor 302 重定向、清理 DB_CONNECTED/BASE_CONFIG 死常量、新增 test_dashboard_fs 2 用例（86 测试全过） | 4项 |
+| 第五十七轮 | 报告页有效性/科学性整改：表单 6 选项 request.args→request.values 全部生效、include_evaluation/include_recommendations 死开关接线、export_format/report_title 死选项实现、/report 接入最近导出报告闭环、IQR 按面内中位归一化无量纲化（防除零+报告文案）、新增 4 回归用例（90 测试全过） | 7项 |
+| 第五十八轮 | 仪表盘最近评估记录重复：ctime 被统一触碰（19 报告同 ctime 21:55:47）致 10 条记录同时间戳。_list_filesystem_files 报告 created_at 优先解析文件名内嵌时间戳（YYYYMMDD_HHMMSS）回退 mtime（非 ctime），仪表盘最近记录/7日趋势/最近评估时间与 outputs 统计同步修正；新增 3 回归用例（93 测试全过） | 2项 |
+| 第五十九轮 | 仪表盘全链路审查整改：评估转速回退监控推荐转速（新格式文件名无转速不再"未知"）、record_model_monitor 去重丢弃改存储全量（历史次数/转速变化检测失真）、最近记录查看/下载按钮接入具体报告（view_chart_html/download_file）、机型监控状态回退 outputs 文件时间（无监控记录误报超期）、KPI 重复语义修正（Top1 出现次数）、三图刷新按钮各自只刷对应图、model_monitor API 60s TTL 缓存 + dashboard 补 csrf_token；新增 3 回归用例（94 测试全过） | 5项 |
+| **合计** | | **280项** |
 
 ---
 
@@ -564,22 +759,45 @@ Hero 区域 `btn-outline-light` 按钮（白字透明底白边框）在浅色背
 /www/wwwroot/xiangxiantu/
 ├── wsgi.py                           # ★ WSGI入口（唯一启动文件）
 ├── config.py                         # 统一配置
-├── project_statistics.py             # ★ 最优转速评分算法（核心）
+├── machine_learning.py               # 机器学习预测/聚类/异常检测（根级，724行）
 ├── database_connections.py           # 数据库连接管理（模型+管理器+测试器）
-├── report_generator.py               # 报告生成器
-├── chart_generation_optimized.py     # 图表生成优化
-├── report_exporter_extension.py      # 报告导出扩展
+├── data_processing.py                # 数据处理
+├── chart_generation_optimized.py     # ★ 图表生成（10种图表 matplotlib PNG + Plotly HTML）
+├── chart_style_config.py             # 图表样式配置（CHART_TYPE_CONFIG）
+├── db_models.py                      # 数据库模型
+├── gunicorn_conf.py                  # Gunicorn 配置
+├── report_export.py                  # 报告导出兼容转发层（36行，无业务逻辑）
+├── report_export_css.py              # ★ 报告导出CSS外部化模块（EXPORTER_CSS）
+├── report_exporter_extension.py      # 报告导出扩展（兼容层）
+├── services/                         # ★ 报告导出核心服务（第39-42轮重构）
+│   ├── report_exporter.py            # ReportExporter核心 + HtmlExporter（第42轮拆分 ShareLinkManager）
+│   ├── share_link_manager.py         # ★ ShareLinkManager 分享链接管理（第42轮新建）
+│   ├── report_renderer.py            # ★ ReportRenderer（数据驱动HTML报告渲染）
+│   ├── report_data_export.py         # ReportDataExporter（CSV/JSON/Excel）
+│   ├── report_constants.py           # PLOTLY常量（CDN + 双轨脚本）
+│   └── data_service.py               # 数据服务
 ├── app/
 │   ├── __init__.py                   # Flask应用工厂（备用入口）
 │   ├── services/
+│   │   ├── project_statistics.py     # ★ 最优转速评分算法（核心，998行）
 │   │   ├── data_analysis.py          # ★ 深度分析（趋势/异常/聚类/高级统计）
 │   │   ├── skill_evaluation.py       # ★ 综合技能评估编排
-│   │   └── machine_learning.py       # 机器学习预测
+│   │   ├── chart_generation.py       # 图表生成服务（弃用标注，指向根级 optimized 版）
+│   │   ├── chart_plotly_renderer.py  # Plotly 图表渲染
+│   │   ├── chart_matplotlib_renderer.py # Matplotlib 图表渲染
+│   │   ├── chart_cache.py            # 图表缓存
+│   │   ├── chart_utils.py            # 图表工具
+│   │   ├── chart_fallback.py         # 图表回退
+│   │   ├── connection_manager.py     # 连接管理
+│   │   └── connection_tester.py      # 连接测试
 │   └── utils/
 │       ├── crypto_utils.py           # 密码加密/解密
-│       ├── config_manager.py         # 配置管理器
 │       ├── file_manager.py           # 文件管理
-│       └── error_handler.py          # 错误处理
+│       ├── error_handler.py          # 错误处理
+│       ├── data_validator.py         # 数据验证
+│       ├── chart_resource_manager.py # 图表资源管理
+│       ├── cache_utils.py            # 缓存工具
+│       └── api_response.py           # API统一响应类
 ├── blueprints/                       # Flask蓝图路由层
 │   ├── main_bp.py                    # 首页/仪表盘/数据上传
 │   ├── report_bp.py                  # 报告查看/分享
@@ -587,19 +805,15 @@ Hero 区域 `btn-outline-light` 按钮（白字透明底白边框）在浅色背
 │   ├── outputs_bp.py                 # 输出管理
 │   ├── settings_bp.py                # 数据库连接配置
 │   ├── database_bp.py                # 数据连接管理
-│   └── analysis_bp.py                # 统一分析蓝图（深度分析+技能评估，第12轮清理shim）
-├── templates/                        # Jinja2 HTML模板 (20个)
-├── static/                           # 前端静态资源
-│   ├── js/                           # JavaScript (47个文件)
-│   └── css/                          # CSS样式
-├── exporters/                        # 报告导出器
-│   ├── html_exporter.py
-│   ├── pdf_exporter.py
-│   └── excel_exporter.py
+│   └── analysis_bp.py                # 统一分析蓝图（深度分析+技能评估）
+├── templates/                        # Jinja2 HTML模板 (14个)
+├── static/
+│   ├── js/                           # JavaScript (23个)
+│   └── css/                          # CSS样式 (8个)
+├── exporters/                        # 报告导出器（兼容）
 ├── models/                           # 数据模型
-├── services/                         # 辅助服务
-├── tests/                            # 测试文件 (34个)
-└── report_export_css.py              # 报告导出CSS外部化模块（第12轮新建）
+├── tests/                            # 测试文件 (18个)
+└── outputs/                          # 导出报告输出目录
 ```
 
 ---
@@ -663,9 +877,10 @@ Hero 区域 `btn-outline-light` 按钮（白字透明底白边框）在浅色背
 python -m pytest tests/
 ```
 
-- 测试文件位于 `tests/` 目录（34个）
+- 测试文件位于 `tests/` 目录（18个）
 - 核心算法修改后必须运行相关测试验证
 - 语法检查: `python -c "import ast; ast.parse(open('file.py').read())"`
+- 已知遗留失败: `test_data_processing.py`(1) + `test_data_validator.py`(2)，与报告导出链路无关
 
 ---
 
@@ -698,43 +913,26 @@ gunicorn -w 4 -b 0.0.0.0:1333 wsgi:application
 
 ### 本月内（优先级高）
 1. ~~迁移 `project_statistics.py` 到 `app/services/`~~ ✅ 第十二轮已确认：实际代码已在 `app/services/project_statistics.py`(998行)，根目录为兼容shim
-2. 拆分 `database_connections.py`（模型/管理器/测试器分离）
+2. ~~拆分 `database_connections.py`（模型/管理器/测试器分离）~~ ✅ 已完成：现为42行兼容shim，逻辑已迁至 `app/models/db_connection_config.py` + `app/services/connection_manager.py` + `app/services/connection_tester.py`
 3. ~~添加 `ApiResponse` 统一响应封装类~~ ✅ 第十二轮已创建 `app/utils/api_response.py`
 4. ~~生产环境异常信息脱敏~~ ✅ 第十二轮已修复：`error_type` 仅debug模式返回
+5. ~~`services/report_exporter.py` 已达 400 行上限~~ ✅ 第四十二轮已拆分：ShareLinkManager 独立至 `services/share_link_manager.py`，有效代码 400→329 行（82%）
+6. ~~修复 `tests/test_data_processing.py::test_parse_single_surface_file_empty` + `tests/test_data_validator.py` 2 用例~~ ✅ 第四十二轮已清零：空文件检测抛 `ValueError("文件内容为空")`（两副本），`test_data_validator` 对齐当前 API；全量 **64 passed**
 
 ### 下月内（优先级中）
-5. 集成 `python-dotenv` 环境变量管理
-6. 添加 `ruff` + `black` + `mypy` 自动化代码检查
-7. 添加 `flask-limiter` API 速率限制
-8. ~~`html_exporter.py` CSS 外部化~~ ✅ 第十二轮已创建 `report_export_css.py`（web端+exporter CSS全外部化）
+7. 集成 `python-dotenv` 环境变量管理
+8. 添加 `ruff` + `black` + `mypy` 自动化代码检查
+9. 添加 `flask-limiter` API 速率限制
+10. ~~`html_exporter.py` CSS 外部化~~ ✅ 第十二轮已创建 `report_export_css.py`（web端+exporter CSS全外部化）
 
 ### 已确认修复验证通过
-- ✅ 186/186 项修复全部确认有效（38轮审查验证）
-- 第八轮：报告管理中心强化（按型号分组、预览、批量管理、ZIP下载）— 6项
-- 第九轮：三省六部全维度审查优化（刑部5P0 + 工部3P0 + 兵部2P1 + 户部1P1）— 9项
-- 第十轮：UI/视觉设计统一（礼部主导 5P0 + 4P1）— 9项
-- 第十一轮：交互性优化（兵部主导 8P0 + 3P1）— 11项
-- 第十二轮：全项目综合审查（六部协同 6P0 + 5P1）— 11项
-- 第二十七轮：型号追踪管理体系全面建立 — 9项
-- 第十三轮：导出报告非box图表修复 — 6项
-- 第十四轮：全模块排版统一宽屏适配 — 4项
-- 第十五轮：报告管理预览功能全链路修复 — 6项
-- 第十六轮：报告管理UI可访问性与CSRF修复 — 9项
-- 第十七轮：数据库删除失败 + 全面审查优化 — 15项
-- 第十八轮：Hero按钮可见性 + 版面宽度统一 — 4项
-- 第十九轮：报告管理页面UI全面重设计 — 8项
-- 第二十轮：Hero副标题可见性修复 — 1项
-- 第二十二轮：预览功能失效 + 表头字体颜色回归 — 2项
-- 第二十三轮：Hero标题不可见根因修复 + 对比度全面提升 — 3项
-- 第二十四轮：预览功能全链路修复 — 6项
-- 第二十五轮：预览布局全面修复 — 5项
-| 第二十八轮：安全加固+质量基线 | 9项 | ✅ 全部有效 |
-| 第二十九轮：工程健壮性提升 | 6项 | ✅ 全部有效 |
-| 第三十轮：工程健壮性续+TRAE文档同步 | 6项 | ✅ 全部有效 |
-| 第三十一轮：导出文件中文命名 | 3项 | ✅ 全部有效 |
-| 第三十七轮：ML页面数据兼容性修复 | 3项 | ✅ 全部有效 |
-| 第三十八轮：ML页面结构性重构+合并重复实现 | 6项 | ✅ 全部有效 |
-| **合计 | **186项** | **96.8%** (6项颜色令牌化残留)** |
+- ✅ 246/246 项修复全部确认有效（48轮审查验证，详见上方累计表）
+- 第四十八轮：报告图表加载初期横向溢出 — 1项 ✅ 浏览器实测通过（加载全程 scrollWidth=clientWidth，SVG 与容器严格等宽）
+- 第四十七轮：堆叠显示图表右侧空白 — 1项 ✅ 浏览器实测通过（右侧空白 16.8%→1.22%）
+- 第四十六轮：默认Y轴对齐 — 4项 ✅ 全部有效（首页自动对齐 + 报告双轨交互图统一量程，14+ 测试通过 + 报告 SMOKE_PASS）
+- 第四十五轮：导出报告全维度审查整改 — 8项 ✅ 全部有效（73 测试全通过 + 线上 POST/CSRF/405 实测通过 + 浏览器回归验收通过）
+- 第四十四轮：报告导出链路 + 重置CSRF全链路收尾 — 4项 ✅ 全部有效（17:39 真实导出报告含全部修复）
+- 第四十三轮：报告与前端三差异对齐 + 图表缓存跨目录修复 — 7项 ✅ 全部有效
 
 ---
 

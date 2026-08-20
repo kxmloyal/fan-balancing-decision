@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>机型监控 - 扇叶平衡补土转速评估工具</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='libs/bootstrap/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='libs/bootstrap-icons/bootstrap-icons.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/model-monitor.css') }}">
+</head>
+<body>
+    {% import "macros/navbar.html" as navbar_macros %}
+    {{ navbar_macros.render_navbar(active_page='model_monitor') }}
+
+    <div class="mm-page">
+        <div class="mm-hero">
+            <div class="container">
+                <div class="mm-hero-content">
+                    <div class="mm-hero-info">
+                        <h1 class="mm-hero-title"><i class="bi bi-cpu me-2"></i>机型监控</h1>
+                        <p class="mm-hero-subtitle">按机型监控推荐平衡转速、使用设备与数据完整度</p>
+                    </div>
+                    <div class="mm-hero-actions">
+                        <button class="btn btn-light btn-sm" id="mmRefreshBtn">
+                            <i class="bi bi-arrow-clockwise me-1"></i>刷新
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="mm-alert-bar" id="mmAlertBar" style="display:none;"></div>
+
+            <div class="mm-stat-bar">
+                <div class="mm-stat-card">
+                    <div class="mm-stat-icon blue"><i class="bi bi-cpu"></i></div>
+                    <div class="mm-stat-body">
+                        <div class="mm-stat-value" id="mmStatModels">--</div>
+                        <div class="mm-stat-label">监控机型</div>
+                    </div>
+                </div>
+                <div class="mm-stat-card">
+                    <div class="mm-stat-icon amber"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div class="mm-stat-body">
+                        <div class="mm-stat-value" id="mmStatAlerts">--</div>
+                        <div class="mm-stat-label">告警项</div>
+                    </div>
+                </div>
+                <div class="mm-stat-card">
+                    <div class="mm-stat-icon red"><i class="bi bi-x-octagon"></i></div>
+                    <div class="mm-stat-body">
+                        <div class="mm-stat-value" id="mmStatCritical">--</div>
+                        <div class="mm-stat-label">紧急机型</div>
+                    </div>
+                </div>
+                <div class="mm-stat-card">
+                    <div class="mm-stat-icon purple"><i class="bi bi-clock-history"></i></div>
+                    <div class="mm-stat-body">
+                        <div class="mm-stat-value" id="mmStatLatest">--</div>
+                        <div class="mm-stat-label">最新分析</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mm-toolbar">
+                <div class="mm-filter-chips" id="mmFilterChips">
+                    <span class="mm-filter-chip active" data-filter="all">全部</span>
+                    <span class="mm-filter-chip" data-filter="alert">有告警</span>
+                    <span class="mm-filter-chip" data-filter="stale">超期</span>
+                    <span class="mm-filter-chip" data-filter="speed">转速变化</span>
+                    <span class="mm-filter-chip" data-filter="missing">缺件</span>
+                </div>
+                <span class="mm-result-count" id="mmResultCount">加载中...</span>
+            </div>
+
+            <div class="mm-card-grid" id="mmCardGrid">
+                <div class="mm-loading">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <p class="text-muted">正在加载机型监控数据...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 转速历史详情弹层 -->
+    <div class="modal fade" id="mmHistoryModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="mmHistoryTitle">转速历史</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="mmHistoryBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script defer src="{{ url_for('static', filename='js/safe-fetch.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/model-monitor.js') }}"></script>
+</body>
+</html>

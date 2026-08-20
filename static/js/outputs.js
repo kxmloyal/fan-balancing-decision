@@ -684,16 +684,16 @@
             if (resp.success) {
                 _selectedFiles.clear();
                 updateBatchBar();
-                window.showToast('已成功删除 ' + fileIds.length + ' 个文件', 'success');
+                window.showToast('success', '已成功删除 ' + fileIds.length + ' 个文件');
                 loadReportData();
             } else {
-                window.showToast('删除失败: ' + (resp.message || '未知错误'), 'danger');
+                window.showToast('danger', '删除失败: ' + (resp.message || '未知错误'));
             }
         })
         .catch(function(err) {
             setBatchLoading(false);
             console.error('删除失败:', err);
-            window.showToast('删除失败: ' + err.message, 'danger');
+            window.showToast('danger', '删除失败: ' + err.message);
         });
     }
 
@@ -729,7 +729,7 @@
         .catch(function(err) {
             setBatchLoading(false);
             console.error('批量下载失败:', err);
-            window.showToast('批量下载失败: ' + err.message, 'danger');
+            window.showToast('danger', '批量下载失败: ' + err.message);
         });
     }
 

@@ -103,6 +103,10 @@
     </div>
 </nav>
 
+<!-- 全局 CSRF token + 导出管理器：所有页面统一注入（POST 导出需要安全令牌） -->
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<script defer src="{{ url_for('static', filename='js/export-manager.js') }}?v=1"></script>
+
 {% endmacro %}
 
 {% macro render_help_modal() %}

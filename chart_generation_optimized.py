@@ -601,7 +601,9 @@ def generate_generic_charts(
     for chart_type in chart_types:
         chart_id = None
         if data_hash and surface_type:
-            chart_id = chart_resource_manager.generate_chart_id(data_hash, surface_type, chart_type)
+            chart_id = chart_resource_manager.generate_chart_id(
+                data_hash, surface_type, chart_type, scope=model_output_dir
+            )
         else:
             chart_zh_name = CHART_TYPE_CONFIG.get(chart_type, {}).get("name", chart_type)
             chart_filename = f"{output_prefix}_{surface_name}_{chart_zh_name}"

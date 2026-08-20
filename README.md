@@ -50,10 +50,12 @@ xiangxiantu/
 │   │   └── modules/chart-manager/         # ECharts 图表管理器 (TypeScript)
 │   └── css/                         # CSS 样式
 │       └── ml.css                   # ML 页面样式（数据源栏+面板+响应式）(~590行)
-├── services/                        # 报告导出服务层（第41轮拆分）
-│   ├── report_exporter.py           # ReportExporter核心+HtmlExporter+ShareLinkManager(612行)
-│   ├── report_html_builder.py       # HTML报告构建器(588行)
-│   └── report_data_export.py        # CSV/JSON/Excel格式导出(197行)
+├── services/                        # 报告导出服务层（第41-42轮拆分）
+│   ├── report_exporter.py           # ReportExporter核心+HtmlExporter(329行)
+│   ├── share_link_manager.py        # ShareLinkManager分享链接(87行, 第42轮新建)
+│   ├── report_renderer.py           # ReportRenderer数据驱动HTML报告渲染
+│   ├── report_data_export.py        # CSV/JSON/Excel格式导出(197行)
+│   └── report_constants.py          # PLOTLY常量(CDN + 双轨脚本)
 ├── exporters/                       # 报告导出器shim（指向report_export.py）
 ├── tests/                           # 测试文件 (34个)
 ├── machine_learning.py              # 机器学习算法 (738行, 8函数) (第38-40轮)
@@ -611,8 +613,9 @@ gunicorn -w 4 -b 0.0.0.0:1333 wsgi:application
 
 | 模块 | 行数 | 职责 |
 |------|------|------|
-| `services/report_exporter.py` | 612 | ReportExporter核心 + HtmlExporter + ShareLinkManager + 惰性委派属性 |
-| `services/report_html_builder.py` | 588 | HTML报告构建（export_html + 7个 _write_* 方法） |
+| `services/report_exporter.py` | 329 | ReportExporter核心 + HtmlExporter + 惰性委派属性（第42轮拆分后） |
+| `services/share_link_manager.py` | 87 | ShareLinkManager 分享链接管理（第42轮新建） |
+| `services/report_renderer.py` | ~356 | ReportRenderer 数据驱动HTML报告渲染 |
 | `services/report_data_export.py` | 197 | CSV/JSON/Excel格式导出 |
 | `report_export.py` | 46 | 兼容shim（原1350行→46行，−96.6%） |
 

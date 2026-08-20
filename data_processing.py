@@ -93,6 +93,10 @@ def read_multiformat_file(file_path: str) -> pd.DataFrame:
     if not os.path.isfile(file_path):
         raise ValueError(f"路径不是文件：{file_path}")
 
+    # 空文件直接报错，避免编码检测误报"无法识别编码"
+    if os.path.getsize(file_path) == 0:
+        raise ValueError("文件内容为空")
+
     try:
         ext = file_path.rsplit(".", 1)[1].lower()
     except IndexError:

@@ -9,7 +9,7 @@ from report_export import ReportExporter
 
 class TestIntegration(unittest.TestCase):
     """
-    集成测试
+    集成测试（对齐当前 ReportExporter API）
     """
 
     def setUp(self):
@@ -19,9 +19,8 @@ class TestIntegration(unittest.TestCase):
         # 创建临时目录用于测试
         self.temp_dir = tempfile.mkdtemp()
 
-        # 初始化导出器
-        self.exporter = ReportExporter()
-        self.exporter.output_folder = self.temp_dir
+        # 初始化导出器（output_folder 指向临时目录，避免污染项目 outputs/）
+        self.exporter = ReportExporter(output_folder=self.temp_dir)
 
         # 准备测试数据
         self.test_session_data = {
@@ -97,8 +96,18 @@ class TestIntegration(unittest.TestCase):
         测试CSV导出
         """
         try:
+            # 补充转速详细得分数据（CSV 导出的数据源）
+            session_data = dict(self.test_session_data)
+            session_data["evaluation_report"]["speed_detailed_scores"] = {
+                "1500rpm": {
+                    "P1": {"iqr": 0.3, "cv": 5.2, "face_score": 0.9},
+                    "P2": {"iqr": 0.4, "cv": 6.1, "face_score": 0.85},
+                    "total_score": 0.88,
+                }
+            }
+
             # 导出CSV
-            csv_path = self.exporter.export("csv", self.test_session_data, "test_integration.csv")
+            csv_path = self.exporter.export("csv", session_data, "test_integration.csv")
 
             # 验证文件存在
             self.assertTrue(os.path.exists(csv_path))
@@ -108,13 +117,12 @@ class TestIntegration(unittest.TestCase):
             self.assertTrue(os.path.getsize(csv_path) > 0)
 
             # 验证文件内容
-            with open(csv_path, "r", encoding="utf-8") as f:
+            with open(csv_path, "r", encoding="utf-8-sig") as f:
                 content = f.read()
                 self.assertIn("转速", content)
-                self.assertIn("平均值", content)
-                self.assertIn("标准差", content)
-                self.assertIn("1000", content)
-                self.assertIn("1.0", content)
+                self.assertIn("1500rpm", content)
+                self.assertIn("综合得分", content)
+                self.assertIn("0.88", content)
 
             print(f"CSV导出测试成功: {csv_path}")
         except Exception as e:  # 注意：捕获了过于宽泛的异常
@@ -149,121 +157,43 @@ class TestIntegration(unittest.TestCase):
         except Exception as e:  # 注意：捕获了过于宽泛的异常
             self.fail(f"JSON导出测试失败: {str(e)}")
 
-    def test_batch_export(self):
-        """
-        测试批量导出
-        """
-        try:
-            # 定义批量导出任务
-            export_tasks = [
-                {
-                    "session_data": self.test_session_data,
-                    "export_type": "html",
-                    "output_filename": "batch_html.html",
-                },
-                {
-                    "session_data": self.test_session_data,
-                    "export_type": "csv",
-                    "output_filename": "batch_csv.csv",
-                },
-                {
-                    "session_data": self.test_session_data,
-                    "export_type": "json",
-                    "output_filename": "batch_json.json",
-                },
-            ]
-
-            # 执行批量导出
-            results = self.exporter.batch_export(export_tasks, concurrent=False)
-
-            # 验证结果
-            self.assertIsInstance(results, dict)
-            self.assertIn("success", results)
-            self.assertIn("failed", results)
-
-            # 验证成功的任务数
-            self.assertEqual(len(results["success"]), 3)
-            self.assertEqual(len(results["failed"]), 0)
-
-            # 验证文件存在
-            for item in results["success"]:
-                result_path = item["result"]
-                self.assertTrue(os.path.exists(result_path))
-                self.assertTrue(os.path.getsize(result_path) > 0)
-                print(f"批量导出成功: {result_path}")
-
-            print("批量导出测试成功")
-        except Exception as e:  # 注意：捕获了过于宽泛的异常
-            self.fail(f"批量导出测试失败: {str(e)}")
-
     def test_report_customization(self):
         """
-        测试报告定制化
+        测试报告定制化（report_config 章节开关）
         """
         try:
-            # 定义自定义配置
+            # 定义自定义配置（当前渲染器支持的 include_* 开关）
             custom_config = {
-                "title": "Custom Integration Test Report",
                 "include_summary": True,
                 "include_stats": True,
                 "include_charts": False,  # 不包含图表
                 "include_methodology": False,  # 不包含方法说明
-                "include_recommendations": True,
-                "include_technical_details": False,  # 不包含技术细节
                 "chart_layout": "stacked",
-                "custom_css": "body { font-family: Arial, sans-serif; }",
-                "custom_header": '<div style="text-align: center; padding: 20px;"><h3>Custom Header</h3></div>',
-                "custom_footer": '<div style="text-align: center; padding: 20px;"><p>Custom Footer</p></div>',
             }
+
+            # 携带图表数据，验证 include_charts=False 时确实不渲染图表章节
+            session_data = dict(self.test_session_data)
+            session_data["plots"] = {"p1": {"box": {"png": "", "chart_data": "[]"}}}
 
             # 导出自定义报告
             html_path = self.exporter.export(
-                "html", self.test_session_data, "custom_report.html", report_config=custom_config
+                "html", session_data, "custom_report.html", report_config=custom_config
             )
 
             # 验证文件存在
             self.assertTrue(os.path.exists(html_path))
             self.assertTrue(os.path.getsize(html_path) > 0)
 
-            # 验证文件内容
+            # 验证章节开关生效
             with open(html_path, "r", encoding="utf-8") as f:
                 content = f.read()
-                self.assertIn("Custom Integration Test Report", content)
-                self.assertIn("Custom Header", content)
-                self.assertIn("Custom Footer", content)
-                self.assertIn("font-family: Arial, sans-serif", content)
+                self.assertIn("一、分析摘要", content)  # include_summary=True
+                self.assertNotIn("四、数据图表", content)  # include_charts=False
+                self.assertNotIn("五、统计分析方法", content)  # include_methodology=False
 
             print(f"报告定制化测试成功: {html_path}")
         except Exception as e:  # 注意：捕获了过于宽泛的异常
             self.fail(f"报告定制化测试失败: {str(e)}")
-
-    def test_task_queue(self):
-        """
-        测试任务队列
-        """
-        try:
-            # 添加任务到队列
-            task_id = self.exporter.add_to_queue("html", self.test_session_data, "queue_test.html")
-            self.assertIsInstance(task_id, str)
-
-            # 获取任务状态
-            task_status = self.exporter.get_task_status(task_id)
-            self.assertIsInstance(task_status, dict)
-            self.assertEqual(task_status["task_id"], task_id)
-
-            # 获取队列状态
-            queue_status = self.exporter.get_queue_status()
-            self.assertIsInstance(queue_status, dict)
-            self.assertIn("queue_length", queue_status)
-            self.assertIn("running_tasks", queue_status)
-
-            # 清空队列
-            clear_result = self.exporter.clear_queue()
-            self.assertEqual(clear_result["message"], "任务队列已清空")
-
-            print("任务队列测试成功")
-        except Exception as e:  # 注意：捕获了过于宽泛的异常
-            self.fail(f"任务队列测试失败: {str(e)}")
 
 
 if __name__ == "__main__":

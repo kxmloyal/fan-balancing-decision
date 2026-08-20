@@ -173,7 +173,7 @@ def evaluate_skill_ida():
         return _handle_evaluate()
     except Exception as e:
         logger.error("深入分析失败: %s", str(e))
-        return jsonify({"code": 500, "message": "深入分析失败，请稍后重试", "data": None})
+        return jsonify({"code": 500, "message": f"深入分析失败：{str(e)}", "data": None})
 
 
 # ═══════════════════════════════════════════════════════════════

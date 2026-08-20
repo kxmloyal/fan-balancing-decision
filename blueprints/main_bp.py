@@ -23,14 +23,12 @@ from app.utils.cache_utils import query_cache
 from chart_generation_optimized import build_report_charts, generate_single_surface_plots
 from chart_style_config import CHART_TYPE_CONFIG
 
-# 数据库连接状态（可通过配置覆盖）
-from config import BALANCE_MACHINE_MODELS, BASE_CONFIG
+from config import BALANCE_MACHINE_MODELS
 from services.data_service import DataProcessingService
+from services.model_monitor_service import record_model_monitor
 from utils.data_validator import validate_and_align_data
 from utils.error_handler import error_handler
 from utils.file_manager import file_manager
-
-DB_CONNECTED = BASE_CONFIG.get("DB_CONNECTED", False)
 
 
 def _get_balancer_models():
@@ -407,6 +405,9 @@ def handle_file_upload(p1_file, p2_file, st_file):
     if not all(c.isalnum() or c in " -_." for c in fan_model):
         flash("扇叶型号只能包含字母、数字、空格、连字符、下划线和点！")
         return redirect(request.url)
+    if fan_model in (".", "..") or fan_model.startswith("."):
+        flash("扇叶型号不能以点开头！")
+        return redirect(request.url)
 
     balance_machine_model = request.form.get("balance_machine_model", "").strip()
     if not balance_machine_model:
@@ -612,6 +613,7 @@ def handle_double_surface_case(surface_data, output_prefix, fan_model, balance_m
             "balance_machine_model": balance_machine_model,
         }
         _save_to_session_with_limit(session, "saved_results", saved_results)
+        record_model_monitor(current_app.config.get("OUTPUT_FOLDER", "outputs"), fan_model, evaluation_report, balance_machine_model)
 
         logger.info(
             "准备渲染模板: has_p1=%s, has_p2=%s, stats_html长度=%d, evaluation_report=%s",
@@ -709,6 +711,7 @@ def handle_single_surface_case(surface_data, output_prefix, fan_model, balance_m
         "balance_machine_model": balance_machine_model,
     }
     _save_to_session_with_limit(session, "saved_results", saved_results)
+    record_model_monitor(current_app.config.get("OUTPUT_FOLDER", "outputs"), fan_model, evaluation_report, balance_machine_model)
 
     # 结果渲染
     return render_template(
@@ -877,6 +880,7 @@ def match_speeds():
                 "balance_machine_model": balance_machine_model,
             }
             _save_to_session_with_limit(session, "saved_results", saved_results)
+            record_model_monitor(current_app.config.get("OUTPUT_FOLDER", "outputs"), fan_model, evaluation_report, balance_machine_model)
 
             # 跳转到匹配结果页面
             return redirect(url_for("main.match_result"))
@@ -915,7 +919,12 @@ def reset():
         flash("安全验证失败，请刷新页面后重试")
         return redirect(url_for("main.index"))
 
+    # 保留 CSRF token 不轮换：session.clear() 会删除 csrf_token，下次渲染生成新 token，
+    # 而浏览器 reload 可能命中缓存/bfcache 仍持有旧 token，导致提交报 "CSRF tokens do not match"
+    _csrf_token = session.get("csrf_token")
     session.clear()
+    if _csrf_token:
+        session["csrf_token"] = _csrf_token
 
     # 清除所有可能的分析相关数据
     keys_to_clear = [
@@ -944,161 +953,138 @@ def reset():
     return redirect(url_for("main.index"))
 
 
+def _extract_speed_from_filename(filename):
+    """从报告文件名提取转速（SN300-12_1500rpm_动平衡分析报告.html → 1500rpm）"""
+    for part in filename.replace("动平衡分析报告", "").replace(".", " ").split("_"):
+        p = part.strip()
+        if p.lower().endswith("rpm"):
+            return p
+    return "未知"
+
+
+def _lookup_latest_speed(monitor_data, fan_model):
+    """查机型监控记录中该型号最近一次推荐转速"""
+    if not fan_model or fan_model == "未知":
+        return "未知"
+    records = monitor_data.get(fan_model) or []
+    if records:
+        best_speeds = records[-1].get("best_speeds") or []
+        if best_speeds:
+            return str(best_speeds[0])
+    return "未知"
+
+
 def _get_dashboard_data():
-    # 60秒 TTL 缓存：仪表盘数据变更频率低，避免每次刷新重复执行 5+ 个 DB 查询
+    # 60秒 TTL 缓存：仪表盘数据变更频率低，避免每次刷新重复扫描文件系统
     cached = query_cache.get("dashboard_data")
     if cached is not None:
         return cached
 
-    total_evaluations = 0
-    optimal_speed = "—"
-    model_count = 0
-    latest_evaluation = "暂无"
-    speed_stability = 0
-    recent_records = []
-    evaluation_dates = [
-        (datetime.now() - timedelta(days=i)).strftime("%m-%d") for i in range(7, 0, -1)
+    # FS 数据源：outputs 报告文件扫描 + 机型监控记录（model_monitor.json）。
+    # DB_CONNECTED 未启用时仪表盘不再空壳，直接使用文件系统真实数据。
+    from blueprints.outputs_bp import _list_filesystem_files
+    from services.model_monitor_service import load_monitor_data
+
+    output_folder = current_app.config.get("OUTPUT_FOLDER", "outputs")
+    files = _list_filesystem_files()
+    monitor = load_monitor_data(output_folder)
+
+    # 只统计「评估报告」HTML（排除 chart_ 图表与内部元数据文件）
+    reports = [
+        f
+        for f in files
+        if f.get("file_type") == "html"
+        and not f.get("filename", "").startswith("chart_")
+        and "动平衡分析报告" in f.get("filename", "")
     ]
-    evaluation_counts = [0] * 7
-    speed_labels = []
-    speed_counts = []
-    model_labels = []
-    model_counts = []
+    reports.sort(key=lambda x: x.get("created_at") or x.get("updated_at"), reverse=True)
 
-    if not DB_CONNECTED:
-        result = {
-            "total_evaluations": 0,
-            "optimal_speed": "—",
-            "model_count": 0,
-            "latest_evaluation": "暂无",
-            "speed_stability": 0,
-            "evaluation_dates": evaluation_dates,
-            "evaluation_counts": evaluation_counts,
-            "speed_labels": speed_labels,
-            "speed_counts": speed_counts,
-            "model_labels": model_labels,
-            "model_counts": model_counts,
-            "recent_records": [],
-        }
-        query_cache.set("dashboard_data", result, ttl=60)
-        return result
+    total_evaluations = len(reports)
 
-    try:
-        from sqlalchemy import func as _func
+    latest_evaluation = "暂无"
+    if reports:
+        latest_created = reports[0].get("created_at") or reports[0].get("updated_at")
+        if latest_created:
+            latest_evaluation = latest_created.strftime("%Y-%m-%d %H:%M")
 
-        from db_models import AnalysisResult
-
-        if AnalysisResult is None:
-            raise RuntimeError("AnalysisResult 模型未定义")
-
-        total_evaluations = AnalysisResult.query.count()
-
-        recent = AnalysisResult.query.order_by(AnalysisResult.analysis_time.desc()).limit(10).all()
-        for a in recent:
-            evaluated_speeds = "未知"
-            try:
-                input_files = json.loads(a.input_files) if a.input_files else []
-                if input_files:
-                    first_file = input_files[0]
-                    if "-" in first_file:
-                        evaluated_speeds = (
-                            first_file.split("-")[0]
-                            + "-"
-                            + first_file.split("-")[1].split(".")[0]
-                            + "rpm"
-                        )
-            except (ValueError, json.JSONDecodeError):
-                pass
-            recent_records.append(
-                {
-                    "id": a.id,
-                    "timestamp": a.analysis_time.strftime("%Y-%m-%d %H:%M:%S")
-                    if a.analysis_time
-                    else "",
-                    "fan_model": a.fan_model or "未知",
-                    "evaluated_speeds": evaluated_speeds,
-                    "optimal_speed": a.best_speed or "未知",
-                }
-            )
-
-        if recent:
-            latest = recent[0]
-            latest_evaluation = (
-                latest.analysis_time.strftime("%Y-%m-%d %H:%M") if latest.analysis_time else "—"
-            )
-
-        today = datetime.now()
-        date_counts = dict(
-            AnalysisResult.session.query(
-                _func.date(AnalysisResult.analysis_time).label("d"),
-                _func.count(AnalysisResult.id).label("cnt"),
-            )
-            .filter(AnalysisResult.analysis_time >= today - timedelta(days=7))
-            .group_by(_func.date(AnalysisResult.analysis_time))
-            .all()
-        )
-        evaluation_dates = []
-        evaluation_counts = []
-        for i in range(7, 0, -1):
-            d = today - timedelta(days=i)
-            ds = d.strftime("%Y-%m-%d")
-            lbl = d.strftime("%m-%d")
-            evaluation_dates.append(lbl)
-            evaluation_counts.append(date_counts.get(ds, 0))
-
-        speed_rows = (
-            AnalysisResult.session.query(
-                AnalysisResult.best_speed, _func.count(AnalysisResult.id).label("cnt")
-            )
-            .filter(AnalysisResult.best_speed.isnot(None))
-            .group_by(AnalysisResult.best_speed)
-            .order_by(_func.count(AnalysisResult.id).desc())
-            .limit(6)
-            .all()
-        )
-        if speed_rows:
-            speed_labels = [r[0] for r in speed_rows]
-            speed_counts = [r[1] for r in speed_rows]
-            optimal_speed = speed_rows[0][0]
-            total_with_speed = sum(speed_counts)
-            if total_with_speed > 0:
-                speed_stability = round(speed_rows[0][1] / total_with_speed * 100)
-
-        model_rows = (
-            AnalysisResult.session.query(
-                AnalysisResult.fan_model, _func.count(AnalysisResult.id).label("cnt")
-            )
-            .filter(AnalysisResult.fan_model.isnot(None))
-            .group_by(AnalysisResult.fan_model)
-            .order_by(_func.count(AnalysisResult.id).desc())
-            .limit(6)
-            .all()
-        )
-        model_labels = [r[0] for r in model_rows]
-        model_counts = [r[1] for r in model_rows]
-        model_count = (
-            AnalysisResult.session.query(_func.count(_func.distinct(AnalysisResult.fan_model)))
-            .filter(AnalysisResult.fan_model.isnot(None))
-            .scalar()
-            or 0
+    recent_records = []
+    for f in reports[:10]:
+        created = f.get("created_at") or f.get("updated_at")
+        fan_model = f.get("fan_model") or "未知"
+        # 评估转速：优先文件名内嵌转速；新格式文件名不含转速时回退该型号
+        # 最近一次监控推荐转速，避免列表大面积显示"未知"
+        evaluated_speeds = _extract_speed_from_filename(f["filename"])
+        if evaluated_speeds == "未知":
+            evaluated_speeds = _lookup_latest_speed(monitor, fan_model)
+        recent_records.append(
+            {
+                "id": f.get("id") or f["filename"],
+                "filename": f["filename"],
+                # 相对 OUTPUT_FOLDER 路径，供报告查看/下载链接使用
+                "file_path_rel": os.path.relpath(f["file_path"], output_folder),
+                "timestamp": created.strftime("%Y-%m-%d %H:%M:%S") if created else "",
+                "fan_model": fan_model,
+                "evaluated_speeds": evaluated_speeds,
+                "optimal_speed": _lookup_latest_speed(monitor, fan_model),
+            }
         )
 
-    except Exception as e:
-        current_app.logger.error("仪表盘数据获取失败: %s", str(e), exc_info=True)
+    # 7日评估趋势（按报告文件创建时间，含今天共 7 个点）
+    today = datetime.now()
+    date_counts = {}
+    for f in reports:
+        created = f.get("created_at") or f.get("updated_at")
+        if created and created >= today - timedelta(days=6):
+            ds = created.strftime("%Y-%m-%d")
+            date_counts[ds] = date_counts.get(ds, 0) + 1
+    evaluation_dates = []
+    evaluation_counts = []
+    for i in range(6, -1, -1):
+        d = today - timedelta(days=i)
+        evaluation_dates.append(d.strftime("%m-%d"))
+        evaluation_counts.append(date_counts.get(d.strftime("%Y-%m-%d"), 0))
+
+    # 型号分布 + 已评估型号数（按报告 fan_model 聚合）
+    model_count_map = {}
+    for f in reports:
+        fm = f.get("fan_model") or "未知"
+        model_count_map[fm] = model_count_map.get(fm, 0) + 1
+    model_rows = sorted(model_count_map.items(), key=lambda x: x[1], reverse=True)[:6]
+    model_labels = [m for m, _ in model_rows]
+    model_counts = [c for _, c in model_rows]
+    model_count = len(model_count_map)
+
+    # 转速分布 + 最常见最优转速 + 稳定性（来源：机型监控记录 best_speeds）
+    speed_count_map = {}
+    for records in monitor.values():
+        for r in records:
+            for sp in r.get("best_speeds") or []:
+                key = str(sp)
+                speed_count_map[key] = speed_count_map.get(key, 0) + 1
+    speed_rows = sorted(speed_count_map.items(), key=lambda x: x[1], reverse=True)[:6]
+    speed_labels = [s for s, _ in speed_rows]
+    speed_counts = [c for _, c in speed_rows]
+    optimal_speed = "—"
+    speed_stability = 0
+    if speed_rows:
+        optimal_speed = speed_rows[0][0]
+        total_with_speed = sum(speed_counts)
+        if total_with_speed > 0:
+            speed_stability = round(speed_rows[0][1] / total_with_speed * 100)
 
     result = {
-        "total_evaluations": total_evaluations or 0,
-        "optimal_speed": optimal_speed or "—",
-        "model_count": model_count or 0,
-        "latest_evaluation": latest_evaluation or "暂无",
-        "speed_stability": speed_stability or 0,
-        "evaluation_dates": evaluation_dates or [],
-        "evaluation_counts": evaluation_counts or [],
-        "speed_labels": speed_labels or [],
-        "speed_counts": speed_counts or [],
-        "model_labels": model_labels or [],
-        "model_counts": model_counts or [],
-        "recent_records": recent_records or [],
+        "total_evaluations": total_evaluations,
+        "optimal_speed": optimal_speed,
+        "model_count": model_count,
+        "latest_evaluation": latest_evaluation,
+        "speed_stability": speed_stability,
+        "evaluation_dates": evaluation_dates,
+        "evaluation_counts": evaluation_counts,
+        "speed_labels": speed_labels,
+        "speed_counts": speed_counts,
+        "model_labels": model_labels,
+        "model_counts": model_counts,
+        "recent_records": recent_records,
     }
     query_cache.set("dashboard_data", result, ttl=60)
     return result
