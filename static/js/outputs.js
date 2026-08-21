@@ -216,10 +216,14 @@
             let batchKeys = Object.keys(batchMap).map(Number).sort(function(a, b) { return a - b; });
             batchKeys.forEach(function(key) {
                 let batchFiles = batchMap[key];
-                let batchTitle = key > 0 ? '第 ' + key + ' 次测试' : '未归类文件';
+                // 批次标题：未分类型号（无型号归属）才显示"未归类文件"；
+                // 有型号但未导出报告（无报告锚点）的分析同样算一次测试
+                let batchTitle = key > 0 ? '第 ' + key + ' 次测试'
+                    : (group.model === '未分类' ? '未归类文件' : '第 1 次测试');
                 let batchTime = '';
-                let reportInBatch = batchFiles.find(function(f) { return f.filename.indexOf('动平衡分析报告') >= 0; });
-                if (reportInBatch && reportInBatch.created_at) batchTime = ' · ' + formatDateShort(reportInBatch.created_at);
+                let timeAnchor = batchFiles.find(function(f) { return f.filename.indexOf('动平衡分析报告') >= 0; });
+                if (!timeAnchor) timeAnchor = batchFiles[0]; // 无报告时用批次内最早文件时间
+                if (timeAnchor && timeAnchor.created_at) batchTime = ' · ' + formatDateShort(timeAnchor.created_at);
                 html += '<div class="rm-test-batch" data-test-no="' + key + '">';
                 html += '  <div class="rm-test-batch-title"><i class="bi bi-flask me-1"></i>' + escapeHtml(batchTitle) + batchTime + '<span class="rm-test-batch-count">' + batchFiles.length + ' 个文件</span></div>';
                 html += '  <div class="rm-file-grid">';

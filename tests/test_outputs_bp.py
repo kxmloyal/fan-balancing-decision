@@ -168,6 +168,26 @@ def test_by_model_test_batch_with_two_generations(fs_app):
         assert _no("chart_bbb222bbb222bbb222bbb222bbb22222_e876b9e1_p1_box.png") == 2
 
 
+def test_by_model_reportless_group_is_first_batch(fs_app):
+    """有型号但无报告锚点（分析未导出报告）→ test_no=1 视为第1次测试，
+    不得落入"未归类文件"（仅"未分类"组 test_no=0 才是未归类）"""
+    from pathlib import Path
+
+    from blueprints.outputs_bp import output_files_by_model
+
+    with fs_app.app_context():
+        model_dir = Path(fs_app.config["OUTPUT_FOLDER"]) / "1118"
+        model_dir.mkdir()
+        chart = model_dir / "chart_abc111abc111abc111abc111abc11111_e876b9e1_p1_box.png"
+        chart.write_bytes(b"PNG")
+
+        with fs_app.test_request_context("/api/outputs/by_model"):
+            resp = output_files_by_model()
+        group = next(g for g in resp.get_json()["data"] if g["model"] == "1118")
+        assert group["summary"]["test_count"] == 0  # 无报告锚点
+        assert all(f["test_no"] == 1 for f in group["files"])
+
+
 def test_preview_info_relative_urls_no_abs_leak(fs_app):
     client = fs_app.test_client()
     d = client.get("/api/outputs/by_model").get_json()

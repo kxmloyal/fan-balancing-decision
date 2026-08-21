@@ -752,14 +752,23 @@ def output_files_by_model():
                         break
                 f["test_no"] = test_no
             else:
-                # 图表归属：最后一个报告时间 <= 图表时间；无匹配则归最早一次报告
+                # 图表/附属文件归属：最后一个报告时间 <= 图表时间 → 最近一次报告批次
                 ts = f.get("created_at") or ""
                 idx = None
                 for i, rt in enumerate(report_times):
                     if rt <= ts:
                         idx = i
-                # 无匹配（图表时间早于所有报告）则归最早一次报告（第1次批次）
-                f["test_no"] = (idx + 1) if idx is not None else (1 if test_count else 0)
+                if idx is not None:
+                    f["test_no"] = idx + 1
+                elif test_count:
+                    # 早于所有报告 → 归最早一次报告（第1次批次）
+                    f["test_no"] = 1
+                elif model_name != "未分类":
+                    # 有型号但无报告锚点（分析未导出报告）→ 视为第1次测试，
+                    # 避免报告管理页整组落入"未归类文件"造成困惑
+                    f["test_no"] = 1
+                else:
+                    f["test_no"] = 0  # 未分类 → 未归类文件
             f["test_no"] = f.get("test_no", 0)
         type_counts = {}
         total_size = 0
