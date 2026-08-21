@@ -7,7 +7,7 @@
 """
 import logging
 
-from flask import Blueprint, current_app, jsonify, redirect, url_for
+from flask import Blueprint, current_app, jsonify, redirect, request, url_for
 
 from blueprints.outputs_bp import output_files_by_model
 from services.model_monitor_service import build_model_monitor
@@ -28,6 +28,9 @@ def model_monitor_api():
     """聚合看板数据：机型监控记录 + outputs 文件扫描 + 告警规则（60s TTL 缓存）"""
     from app.utils.cache_utils import query_cache
 
+    # 前端「刷新」按钮带 refresh=1 强制失效缓存，避免点了没反应
+    if request.args.get("refresh") == "1":
+        query_cache.delete("model_monitor")
     cached = query_cache.get("model_monitor")
     if cached is not None:
         return jsonify(cached)

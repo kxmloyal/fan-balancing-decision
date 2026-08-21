@@ -42,6 +42,26 @@ def _atomic_write(path, data):
     os.replace(tmp, path)
 
 
+def _invalidate_dashboard_caches():
+    """新分析记录落地后，失效仪表盘与机型监控看板的缓存。
+
+    - file_cache：_list_filesystem_files 30s 缓存——新生成的报告文件必须立即可见，
+      否则新分析完成后最长 30s 仪表盘扫不到新报告（第 62 轮 P2-1 引入缓存后的回归点）
+    - query_cache（60s TTL）：dashboard_data / model_monitor 必须立即反映新记录
+
+    FS 模式（DATABASE_ERROR 降级）不经过 data_processing 的 DB 分支，
+    只有在这里统一失效，仪表盘 KPI/转速分布/看板卡片才能立即反映新记录。
+    """
+    try:
+        from app.utils.cache_utils import file_cache, query_cache
+
+        file_cache.clear()
+        query_cache.delete("dashboard_data")
+        query_cache.delete("model_monitor")
+    except Exception:
+        pass
+
+
 def record_model_monitor(output_folder, fan_model, evaluation_report, balance_machine_model):
     """分析完成时记录该机型最新推荐转速与设备。成功返回 True，否则 False。
 
@@ -68,6 +88,7 @@ def record_model_monitor(output_folder, fan_model, evaluation_report, balance_ma
     data[fan_model] = records[-MAX_RECORDS_PER_MODEL:]
     try:
         _atomic_write(_monitor_path(output_folder), data)
+        _invalidate_dashboard_caches()
         return True
     except OSError as e:
         logger.warning("机型监控记录写入失败: %s", e)

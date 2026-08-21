@@ -86,6 +86,12 @@
 }
 .chart-container {
     min-height: 330px;
+    height: 330px;
+    /* 覆盖 style.css 全局 .chart-container：Plotly 自带绘图边距，
+       再留 20px padding + overflow:hidden 会把图表底部裁掉 */
+    padding: 0;
+    overflow: hidden;
+    margin: 0;
 }
 .records-panel {
     border: none;
@@ -153,5 +159,6 @@
 }
 @media (max-width: 768px) {
     .kpi-value { font-size: 1.5rem; }
-    .chart-container { min-height: 260px; }
+    /* 与 dashboard.js 的 Plotly height:300 保持一致，避免底部裁切 */
+    .chart-container { min-height: 300px; height: 300px; }
 }

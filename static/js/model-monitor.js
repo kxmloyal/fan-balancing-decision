@@ -15,6 +15,11 @@
         return div.innerHTML;
     }
 
+    // 属性值转义：escapeHtml 不转义引号，直接拼进 data-* 属性会被拆穿
+    function escapeAttr(str) {
+        return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
     function statusText(s) {
         return { fresh: '24小时内', recent: '7天内', stale: '超7天', old: '超30天' }[s] || '未知';
     }
@@ -32,7 +37,8 @@
             method: 'GET',
             headers: { 'X-CSRFToken': getCsrfToken() }
         };
-        fetch('/api/outputs/model_monitor', opts)
+        // refresh=1 让后端强制失效 60s 缓存，否则点刷新在缓存期内看不到变化
+        fetch('/api/outputs/model_monitor?refresh=1', opts)
             .then(function(r) { return r.json(); })
             .then(function(resp) {
                 if (!resp.success) throw new Error(resp.error || '加载失败');
@@ -112,8 +118,8 @@
                 ? '<div class="mm-device-row"><i class="bi bi-gear-wide-connected"></i>使用设备：' + escapeHtml(i.device) + '</div>'
                 : '<div class="mm-device-row"><i class="bi bi-gear-wide-connected"></i>使用设备：未记录</div>';
 
-            html += '<div class="mm-card status-' + i.status + '" data-model="' + escapeHtml(i.model) + '">' +
-                '<div class="mm-card-head" data-model="' + escapeHtml(i.model) + '" title="点击查看转速历史">' +
+            html += '<div class="mm-card status-' + i.status + '" data-model="' + escapeAttr(i.model) + '">' +
+                '<div class="mm-card-head" data-model="' + escapeAttr(i.model) + '" title="点击查看转速历史">' +
                     '<span class="mm-status-dot ' + i.status + '"></span>' +
                     '<span class="mm-card-model">' + escapeHtml(i.model) + '</span>' +
                     badges +
@@ -128,7 +134,7 @@
                     '</div>' +
                 '</div>' +
                 '<div class="mm-card-foot">' +
-                    '<button class="btn btn-outline-primary btn-sm mm-hist-btn" data-model="' + escapeHtml(i.model) + '"><i class="bi bi-clock-history me-1"></i>转速历史</button>' +
+                    '<button class="btn btn-outline-primary btn-sm mm-hist-btn" data-model="' + escapeAttr(i.model) + '"><i class="bi bi-clock-history me-1"></i>转速历史</button>' +
                     '<a class="btn btn-outline-secondary btn-sm" href="/outputs"><i class="bi bi-folder2-open me-1"></i>报告管理</a>' +
                     '<a class="btn btn-outline-success btn-sm" href="/api/outputs/batch_download?fan_model=' + encodeURIComponent(i.model) + '"><i class="bi bi-download me-1"></i>打包</a>' +
                 '</div>' +

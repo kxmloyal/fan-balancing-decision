@@ -93,22 +93,20 @@
                 <thead>
                     <tr>
                         <th>转速</th>
-                        <th>中位数得分</th>
-                        <th>标准差得分</th>
-                        <th>变异系数得分</th>
-                        <th>数据量得分</th>
-                        <th>ST奖励</th>
+                        <th>综合得分</th>
+                        <th>P1面得分</th>
+                        <th>P2面得分</th>
+                        <th>ST面得分</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for speed_label, speed in evaluation_results.optimal_speed_evaluation.speed_detailed_scores.items() if speed is mapping %}
                     <tr>
                         <td>{{ speed_label }}</td>
-                        <td>{{ "%.2f"|format((speed.get('median', 0) or 0)|float) }}</td>
-                        <td>{{ "%.2f"|format((speed.get('std', 0) or 0)|float) }}</td>
-                        <td>{{ "%.2f"|format((speed.get('cv', 0) or 0)|float) }}</td>
-                        <td>{{ "%.2f"|format((speed.get('count', 0) or 0)|float) }}</td>
-                        <td>{{ "%.2f"|format((speed.get('st_bonus', 0) or 0)|float) }}</td>
+                        <td>{{ "%.4f"|format((speed.get('total_score', 0) or 0)|float) }}</td>
+                        {% for face in ['P1', 'P2', 'ST'] %}
+                        <td>{{ "%.3f"|format(((speed.get(face) or {}).get('face_score') or 0)|float) }}</td>
+                        {% endfor %}
                     </tr>
                     {% endfor %}
                 </tbody>

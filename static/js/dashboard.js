@@ -5,7 +5,7 @@ function initDashboardCharts(onlyId) {
         return;
     }
 
-    var colors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+    var colors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#64748b', '#f97316', '#14b8a6', '#a855f7'];
 
     function wanted(id) {
         return !onlyId || id === onlyId;
@@ -23,8 +23,10 @@ function initDashboardCharts(onlyId) {
             marker: { color: '#2563eb', opacity: 0.85 },
             hovertemplate: '%{x}<br>评估次数: %{y}<extra></extra>'
         }], {
-            margin: { t: 10, r: 20, b: 40, l: 50 },
-            xaxis: { dtick: 1 },
+            margin: { t: 10, r: 20, b: 50, l: 55 },
+            height: 300,
+            xaxis: { dtick: 1, tickangle: 0 },
+            yaxis: { tickfont: { size: 11 } },
             bargap: 0.3,
             paper_bgcolor: 'transparent',
             plot_bgcolor: 'transparent'
@@ -42,7 +44,9 @@ function initDashboardCharts(onlyId) {
             textposition: 'outside',
             hovertemplate: '%{label}: %{value}次<extra></extra>'
         }], {
-            margin: { t: 10, r: 20, b: 20, l: 20 },
+            // 外部标签需要留足上下左右边距，否则型号名被 svg 裁剪
+            margin: { t: 60, r: 40, b: 60, l: 40 },
+            height: 300,
             paper_bgcolor: 'transparent',
             showlegend: false
         }, { responsive: true, displayModeBar: false });
@@ -56,7 +60,9 @@ function initDashboardCharts(onlyId) {
             marker: { color: colors.slice(0, d.speed_labels.length) },
             hovertemplate: '%{x}: %{y}次<extra></extra>'
         }], {
-            margin: { t: 10, r: 20, b: 40, l: 50 },
+            margin: { t: 10, r: 20, b: 55, l: 55 },
+            height: 300,
+            xaxis: { tickangle: -20, tickfont: { size: 11 } },
             bargap: 0.35,
             paper_bgcolor: 'transparent',
             plot_bgcolor: 'transparent'
@@ -73,7 +79,8 @@ function showEmptyState() {
 
 function refreshCharts(targetId) {
     var fetchFn = typeof window.safeFetch === 'function' ? window.safeFetch : fetch;
-    fetchFn('/api/dashboard/data')
+    // refresh=1 让后端强制失效 60s 缓存，否则点刷新在缓存期内看不到变化
+    fetchFn('/api/dashboard/data?refresh=1')
         .then(function(res) { return res.ok ? res.json() : Promise.reject(res); })
         .then(function(json) {
             if (json.data) {

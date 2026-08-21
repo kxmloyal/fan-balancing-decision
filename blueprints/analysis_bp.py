@@ -14,8 +14,6 @@ from io import BytesIO
 
 from flask import Blueprint, current_app, jsonify, render_template, request, send_file, session
 
-from app.services.skill_evaluation import SkillEvaluationService
-
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 logger = logging.getLogger(__name__)
@@ -510,22 +508,6 @@ def generate_full_report():
         return jsonify({"code": 500, "message": "生成报告失败，请稍后重试", "data": None})
 
 
-@analysis_bp.route("/api/in-depth-analysis/share-link/<link_id>", methods=["DELETE"])
-def revoke_share_link(link_id):
-    try:
-        from report_export import ReportExporter
-
-        exporter = ReportExporter(app=current_app._get_current_object())
-        success = exporter.revoke_shareable_link(link_id)
-        if success:
-            return jsonify({"code": 200, "message": "分享链接已撤销", "data": None})
-        else:
-            return jsonify({"code": 404, "message": "分享链接不存在或已过期", "data": None})
-    except Exception as e:
-        logger.error("撤销分享链接失败: %s", str(e))
-        return jsonify({"code": 500, "message": "撤销链接失败，请稍后重试", "data": None})
-
-
 # ═══════════════════════════════════════════════════════════════
 # 辅助函数
 # ═══════════════════════════════════════════════════════════════
@@ -581,6 +563,7 @@ def _build_pdf_html(evaluation_results):
 
 
 def generate_html_report(evaluation_results, template_name, include):
+    from flask import url_for as flask_url_for
     from jinja2 import Environment
 
     flat_results = _flatten_evaluation_results(evaluation_results)
@@ -595,7 +578,11 @@ def generate_html_report(evaluation_results, template_name, include):
     except FileNotFoundError:
         logger.warning("模板文件 %s 不存在，使用回退模板", template_file)
         return _generate_fallback_report(flat_results)
+    # 裸 Jinja2 Environment 不含 Flask 全局（url_for 等），需手动注入，
+    # 否则 report_template.html 中的 {{ url_for('static', ...) }} 渲染抛 UndefinedError，
+    # 导致 HTML/PDF 报告生成整链路 500
     env = Environment(autoescape=True)
+    env.globals["url_for"] = flask_url_for
     j2_template = env.from_string(template_content)
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return j2_template.render(
@@ -604,7 +591,11 @@ def generate_html_report(evaluation_results, template_name, include):
 
 
 def _flatten_evaluation_results(evaluation_results):
-    flat = dict(evaluation_results)
+    # 深拷贝隔离：浅拷贝下 comprehensive_evaluation 仍指向调用方同一引用，
+    # 注入 recommendations 会污染上游结果对象（导出/缓存/后续渲染受影响）
+    import copy
+
+    flat = copy.deepcopy(evaluation_results)
     if "advanced_analysis" in flat and flat["advanced_analysis"]:
         adv = flat["advanced_analysis"]
         if "advanced_statistics" in adv and adv["advanced_statistics"]:
@@ -621,7 +612,8 @@ def _flatten_evaluation_results(evaluation_results):
         comp = flat["comprehensive_evaluation"]
         if "overall_assessment" in comp and "overall_score" not in comp:
             comp["overall_score"] = comp["overall_assessment"]
-        ses = SkillEvaluationService()
+        # 复用模块级懒加载单例，避免每次报告生成重复实例化服务
+        ses, _das = _get_services()
         comp["recommendations"] = ses._generate_recommendations(flat)
     return flat
 

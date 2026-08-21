@@ -280,6 +280,48 @@
     padding: 16px 20px;
 }
 
+/* 测试批次分组：同一次测试的报告+图表归为一组，标题行区分批次 */
+.rm-test-batch {
+    border-top: 1px dashed var(--border-color);
+}
+.rm-test-batch:first-child {
+    border-top: none;
+}
+.rm-test-batch-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.rm-test-batch-title i {
+    color: var(--primary-color);
+}
+.rm-test-batch-count {
+    margin-left: auto;
+    font-weight: 500;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+.rm-test-batch .rm-file-grid {
+    padding-top: 10px;
+}
+
+/* 文件卡上的测试批次角标 */
+.rm-test-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    vertical-align: 2px;
+    background: rgba(var(--primary-rgb), 0.1);
+    color: var(--primary-color);
+}
+
 .rm-file-card {
     background: var(--background-white);
     border: 1px solid var(--border-color);

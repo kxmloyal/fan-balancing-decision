@@ -245,6 +245,7 @@
     // 7. 图表生成
     // ============================================
 
+    // 趋势分析图：展示各面线性回归斜率，tooltip 补充 R² / 截距 / 趋势方向
     function generateTrendChart(trendAnalysis) {
         if (!isChartAvailable()) return;
         const canvas = document.getElementById('trendChart');
@@ -253,29 +254,46 @@
 
         if (!trendAnalysis) return;
 
-        const labels = ['P1面', 'P2面', 'ST面'];
-        const datasets = [];
+        const surfaces = [
+            { key: 'p1_value', name: 'P1面', color: 'rgba(54, 162, 235, 0.6)', borderColor: 'rgb(54, 162, 235)' },
+            { key: 'p2_value', name: 'P2面', color: 'rgba(255, 99, 132, 0.6)', borderColor: 'rgb(255, 99, 132)' },
+            { key: 'st_value', name: 'ST面', color: 'rgba(75, 192, 192, 0.6)', borderColor: 'rgb(75, 192, 192)' }
+        ];
 
-        labels.forEach((label, index) => {
-            const key = ['p1_value', 'p2_value', 'st_value'][index];
-            const trend = trendAnalysis[key];
+        const labels = [];
+        const slopeValues = [];
+        const bgColors = [];
+        const borderColors = [];
+        const trendMeta = [];
 
-            if (trend) {
-                datasets.push({
-                    label: label,
-                    data: [trend.slope],
-                    backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)', 'rgba(75, 192, 192, 0.6)'][index],
-                    borderColor: ['rgb(54, 162, 235)', 'rgb(255, 99, 132)', 'rgb(75, 192, 192)'][index],
-                    borderWidth: 1
+        surfaces.forEach(surface => {
+            const trend = trendAnalysis[surface.key];
+            if (trend && typeof trend.slope === 'number' && isFinite(trend.slope)) {
+                labels.push(surface.name);
+                slopeValues.push(trend.slope);
+                bgColors.push(surface.color);
+                borderColors.push(surface.borderColor);
+                trendMeta.push({
+                    rSquared: trend.r_squared,
+                    intercept: trend.intercept,
+                    direction: trend.trend_direction || '未知'
                 });
             }
         });
 
+        if (!labels.length) return;
+
         chartInstances['trendChart'] = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['斜率'],
-                datasets: datasets
+                labels: labels,
+                datasets: [{
+                    label: '斜率',
+                    data: slopeValues,
+                    backgroundColor: bgColors,
+                    borderColor: borderColors,
+                    borderWidth: 1
+                }]
             },
             options: {
                 responsive: true,
@@ -288,11 +306,32 @@
                             text: '斜率值'
                         }
                     }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const meta = trendMeta[context.dataIndex];
+                                if (!meta) return '';
+                                const lines = [
+                                    'R²: ' + (typeof meta.rSquared === 'number' ? meta.rSquared.toFixed(4) : 'N/A'),
+                                    '截距: ' + (typeof meta.intercept === 'number' ? meta.intercept.toFixed(4) : 'N/A'),
+                                    '方向: ' + meta.direction
+                                ];
+                                return lines.join('\n');
+                            }
+                        }
+                    }
                 }
             }
         });
     }
 
+    // 数据分布（离散程度）分析：展示各面变异系数 CV%，替代原均值占比饼图。
+    // 原饼图用 P1/P2/ST 三面均值做占比，量纲不同的均值做饼图无统计意义，属语义错误。
     function generateDistributionChart(basicStats) {
         if (!isChartAvailable()) return;
         const canvas = document.getElementById('distributionChart');
@@ -301,41 +340,56 @@
 
         if (!basicStats) return;
 
-        const labels = ['P1面', 'P2面', 'ST面'];
-        const datasets = [];
+        const surfaces = [
+            { key: 'p1_value', name: 'P1面', color: 'rgba(54, 162, 235, 0.6)', borderColor: 'rgb(54, 162, 235)' },
+            { key: 'p2_value', name: 'P2面', color: 'rgba(255, 99, 132, 0.6)', borderColor: 'rgb(255, 99, 132)' },
+            { key: 'st_value', name: 'ST面', color: 'rgba(75, 192, 192, 0.6)', borderColor: 'rgb(75, 192, 192)' }
+        ];
 
-        labels.forEach((label, index) => {
-            const key = ['p1_value', 'p2_value', 'st_value'][index];
-            const stats = basicStats[key];
+        const labels = [];
+        const cvValues = [];
+        const bgColors = [];
+        const borderColors = [];
 
-            if (stats) {
-                datasets.push({
-                    label: label,
-                    data: [stats.mean || 0],
-                    backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)', 'rgba(75, 192, 192, 0.6)'][index],
-                    borderColor: ['rgb(54, 162, 235)', 'rgb(255, 99, 132)', 'rgb(75, 192, 192)'][index],
-                    borderWidth: 1
-                });
+        surfaces.forEach(surface => {
+            const stats = basicStats[surface.key];
+            if (stats && typeof stats.cv === 'number' && isFinite(stats.cv)) {
+                labels.push(surface.name);
+                cvValues.push(stats.cv);
+                bgColors.push(surface.color);
+                borderColors.push(surface.borderColor);
             }
         });
 
+        if (!labels.length) return;
+
         chartInstances['distributionChart'] = new Chart(ctx, {
-            type: 'pie',
+            type: 'bar',
             data: {
                 labels: labels,
                 datasets: [{
-                    data: datasets.map(dataset => dataset.data[0]),
-                    backgroundColor: datasets.map(dataset => dataset.backgroundColor),
-                    borderColor: datasets.map(dataset => dataset.borderColor),
+                    label: '变异系数 CV (%)',
+                    data: cvValues,
+                    backgroundColor: bgColors,
+                    borderColor: borderColors,
                     borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'CV (%)'
+                        }
+                    }
+                },
                 plugins: {
                     legend: {
-                        position: 'bottom'
+                        display: false
                     }
                 }
             }
@@ -1085,6 +1139,9 @@
             const testDataText = document.getElementById('testData').value;
             try {
                 const testData = JSON.parse(testDataText);
+                // 真正输出详细数据到控制台（原实现只弹 toast，无实际输出）
+                console.log('[深入分析] 输入数据明细:');
+                console.log(JSON.stringify(testData, null, 2));
                 showToast('info', '详细数据已输出到控制台');
             } catch (error) {
                 showToast('danger', '数据格式错误');

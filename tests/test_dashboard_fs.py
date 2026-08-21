@@ -2,12 +2,16 @@
 """数据仪表盘 FS 数据源回归测试（方案A：仪表盘并入机型监控后不再依赖 DB）"""
 import json
 
-from app.utils.cache_utils import query_cache
+from app.utils.cache_utils import file_cache, query_cache
 from blueprints.main_bp import _get_dashboard_data
 
 
 def _clean_cache():
+    # 同时清 file_cache：_list_filesystem_files 也有 30s TTL 缓存（第 62 轮起），
+    # 不清会导致测试之间串到上一个 tmp_path 的扫描结果
+    file_cache.clear()
     query_cache.delete("dashboard_data")
+    query_cache.delete("model_monitor")
 
 
 def test_dashboard_fs_reports(tmp_path):
@@ -147,11 +151,13 @@ def test_list_filesystem_files_report_created_at(tmp_path):
     try:
         from blueprints.outputs_bp import _list_filesystem_files
 
+        _clean_cache()
         with app.app_context():
             files = _list_filesystem_files()
         assert len(files) == 1
         assert files[0]["created_at"].strftime("%Y-%m-%d %H:%M:%S") == "2026-08-20 20:28:22"
     finally:
+        _clean_cache()
         if old is not None:
             app.config["OUTPUT_FOLDER"] = old
 
@@ -172,6 +178,7 @@ def test_list_filesystem_files_no_ts_falls_back_to_mtime(tmp_path):
     try:
         from blueprints.outputs_bp import _list_filesystem_files
 
+        _clean_cache()
         with app.app_context():
             files = _list_filesystem_files()
         assert len(files) == 1
@@ -179,5 +186,60 @@ def test_list_filesystem_files_no_ts_falls_back_to_mtime(tmp_path):
         assert files[0]["created_at"] == files[0]["updated_at"]
         assert files[0]["created_at"].date().year >= 2020
     finally:
+        _clean_cache()
         if old is not None:
             app.config["OUTPUT_FOLDER"] = old
+
+
+def test_dashboard_delete_invalidates_cache(tmp_path):
+    """删除报告后仪表盘数据（60s 缓存）必须立即反映，不得返回幽灵统计。
+
+    回归：batch_delete 只清 file_cache，dashboard_data（query_cache 60s TTL）未失效，
+    删除报告后仪表盘累计次数仍包含已删文件，最长 60s 内不刷新。
+    """
+    import wsgi
+
+    app = wsgi.app
+    app.config["TESTING"] = True
+    old = app.config.get("OUTPUT_FOLDER")
+    old_db_err = app.config.get("DATABASE_ERROR")
+    model_dir = tmp_path / "9324"
+    model_dir.mkdir()
+    (model_dir / "9324_动平衡分析报告_20260820_120000.html").write_text(
+        "<html>r</html>", encoding="utf-8"
+    )
+    (tmp_path / "model_monitor.json").write_text("{}", encoding="utf-8")
+    app.config["OUTPUT_FOLDER"] = str(tmp_path)
+    app.config["DATABASE_ERROR"] = "test-force-fs"
+    try:
+        _clean_cache()
+        from blueprints.outputs_bp import _list_filesystem_files, batch_delete_outputs
+
+        with app.app_context():
+            files = _list_filesystem_files()
+        assert len(files) == 1
+        fid = files[0]["id"]
+
+        with app.app_context():
+            data = _get_dashboard_data()
+        assert data["total_evaluations"] == 1
+
+        # 走 batch_delete 删除该报告，随后立即重算仪表盘（不依赖 60s 缓存过期）
+        with app.test_request_context(
+            "/api/outputs/batch_delete", method="POST", json={"ids": [fid]}
+        ):
+            resp = batch_delete_outputs()
+        assert resp.status_code == 200
+
+        with app.app_context():
+            data2 = _get_dashboard_data()
+        assert data2["total_evaluations"] == 0
+        assert data2["recent_records"] == []
+    finally:
+        _clean_cache()
+        if old is not None:
+            app.config["OUTPUT_FOLDER"] = old
+        if old_db_err is None:
+            app.config.pop("DATABASE_ERROR", None)
+        else:
+            app.config["DATABASE_ERROR"] = old_db_err

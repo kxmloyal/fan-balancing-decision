@@ -690,7 +690,7 @@ Hero 区域 `btn-outline-light` 按钮（白字透明底白边框）在浅色背
 | `blueprints/settings_bp.py` | 属性bug修复 |
 | `blueprints/database_bp.py` | 去重超时代码 |
 
-## 累计修复：280 项（59轮）
+## 累计修复：312 项（64轮）
 
 | 轮次 | 内容 | 数量 |
 |------|------|------|
@@ -741,7 +741,12 @@ Hero 区域 `btn-outline-light` 按钮（白字透明底白边框）在浅色背
 | 第五十七轮 | 报告页有效性/科学性整改：表单 6 选项 request.args→request.values 全部生效、include_evaluation/include_recommendations 死开关接线、export_format/report_title 死选项实现、/report 接入最近导出报告闭环、IQR 按面内中位归一化无量纲化（防除零+报告文案）、新增 4 回归用例（90 测试全过） | 7项 |
 | 第五十八轮 | 仪表盘最近评估记录重复：ctime 被统一触碰（19 报告同 ctime 21:55:47）致 10 条记录同时间戳。_list_filesystem_files 报告 created_at 优先解析文件名内嵌时间戳（YYYYMMDD_HHMMSS）回退 mtime（非 ctime），仪表盘最近记录/7日趋势/最近评估时间与 outputs 统计同步修正；新增 3 回归用例（93 测试全过） | 2项 |
 | 第五十九轮 | 仪表盘全链路审查整改：评估转速回退监控推荐转速（新格式文件名无转速不再"未知"）、record_model_monitor 去重丢弃改存储全量（历史次数/转速变化检测失真）、最近记录查看/下载按钮接入具体报告（view_chart_html/download_file）、机型监控状态回退 outputs 文件时间（无监控记录误报超期）、KPI 重复语义修正（Top1 出现次数）、三图刷新按钮各自只刷对应图、model_monitor API 60s TTL 缓存 + dashboard 补 csrf_token；新增 3 回归用例（94 测试全过） | 5项 |
-| **合计** | | **280项** |
+| 第六十轮 | 深入分析(in-depth-analysis)全链路评审整改：P1-1 报告"各转速得分明细"表列名与数据结构不匹配整表输出全0（键 median/std/cv/count/st_bonus 实为 P1/P2/ST 面 dict，重写为 综合得分+P1/P2/ST面得分 4 列，实测 0.7700/0.762/0.777/0.771）；P1-2 分布图用三面均值做饼图占比语义错误（改各面 CV% 柱状图，模板标题同步改"数据离散程度（CV%）"）；P1-3 报告生成裸 Jinja2 Environment 缺 url_for 全局致 HTML/PDF 报告整链路 500（env.globals 注入 url_for）；P2-1 报告模板 detailed/custom 死选项移除（template_map 仅 standard）；P2-2 "查看详细数据"按钮补真实 console.log 输出；P2-3 趋势图增强（面标签+斜率柱图，tooltip 补 R²/截距/方向）；P2-4 _flatten_evaluation_results 改 deepcopy 隔离 + 复用 _get_services 单例（原浅拷贝 mutate 调用方 comprehensive_evaluation）；P2-5 删除孤立 revoke_share_link 端点（全项目无前端调用/测试引用）+ 清理 SkillEvaluationService 死 import；评审排除项：skill-evaluation 双前缀非冗余、test_data_json autoescape+tojson 无 XSS；全量 94 测试全过 | 8项 |
+| 第六十一轮 | outputs 报告管理页全功能评估整改：P1-1 预览弹窗下载按钮改相对路径（preview_info 补 download_url，原绝对路径 file_path 被后端"路径不合法"拒绝）；P1-2 分组视图统计卡改读 summary.latest_report（原读不存在的 g.created_at 恒为"--"）；P1-3 get_output_files 默认 per_page=None 全量返回（原默认20静默截断，stats/export 只拿前20条）；P1-4 DB 分支 sync created_at 改文件名内嵌时间戳 + 偏差>60s 回补历史记录（与 FS 分支口径一致）；P2-1 删除死端点 outputs_stats/export_outputs/api/outputs/list + 清理 pandas 死 import；P2-3 移除 filter_options 死代码（路由3次DB查询白跑）、删错缓存 query_cache.delete("outputs_stats")、f-string 日志清理；P2-4 DB 模式 sync 加 30s 频率控制（file_cache ttl=30）；P2-6 日期解析 Safari 兼容（空格→T）+ 扩展名标签 escapeHtml 转义；P2-9 卡片移除 data-file-path 绝对路径泄漏、过滤态完整性失真修复（orig_type_breakdown 保留供完整性判定）；新增 9 回归用例（103 测试全过） | 9项 |
+| 第六十二轮 | 数据仪表盘全维度评估整改：P1-1 batch_delete 三个分支补 query_cache.delete(dashboard_data/model_monitor)（原只清 file_cache，删后仪表盘/看板最长60s幽灵统计）；P1-2 record_model_monitor 写记录后统一失效缓存，覆盖 FS 模式新分析（原 FS 分支不经过 data_processing 的 DB 失效逻辑）；P1-3 sync_outputs_from_filesystem 入库变更后同步失效看板缓存；P1-4 dashboard/model_monitor API 支持 ?refresh=1 强制失效 60s 缓存，前端刷新按钮带参（原缓存期内点刷新拿旧数据"点了没反应"）；P2-1 _list_filesystem_files 加 30s file_cache（dashboard 页面加载双扫描：页面渲染+model_monitor API 各扫一次）并同步在 record_model_monitor 清 file_cache 防新报告 30s 不可见；P2-2 model-monitor.js 卡片 data-* 属性用 escapeAttr 补引号转义；新增 3 回归用例（106 测试全过） | 8项 |
+| 第六十三轮 | dashboard 图表视觉遮挡修复：P1-1 dashboard.css 覆盖全局 .chart-container（原 style.css padding:20px+overflow:hidden 叠加 dashboard.css 仅改 min-height，Plotly 默认 450px 高度溢出 330px 容器底部被裁，桌面 330px/移动 300px 固定高度）；P1-2 dashboard.js 三个图显式 height:300 与容器一致（原 responsive 只响宽度不响高度）+ 饼图 textposition:outside 边距 20px→60/40/60/40（外部型号标签不再被 svg 裁剪）+ 柱状图 b 边距 40→50/55、转速图 tickangle:-20、颜色数组 6→10 色（>6 型号/转速时后段无色）；全量 106 测试全过 | 2项 |
+| 第六十四轮 | outputs 区分"第几次测试"批次：报告文件为批次锚点（仅 html/pdf 按扩展名过滤，避免 png 图表文件名含"动平衡分析报告"误计 test_count），报告按文件名内嵌时间戳升序编号第1..N次，图表按 created_at(mtime) ≤ 报告时间归属最近批次、早于所有报告回退归第1次批次（原实现落最新批次与注释/测试断言不一致）；outputs.js 组内按 test_no 分组渲染批次标题（第N次测试+文件数）+ 文件卡"第N次"角标 + 分组头部"N次测试"；outputs.css 批次标题/角标样式；新增 2 回归用例（两代报告+图表批次区分、png 扩展名不误计），修正 png 回退断言（107 测试全过） | 5项 |
+| **合计** | | **312项** |
 
 ---
 

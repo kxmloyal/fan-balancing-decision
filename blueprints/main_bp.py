@@ -1099,6 +1099,9 @@ def dashboard():
 @main_bp.route("/api/dashboard/data")
 def api_dashboard_data():
     try:
+        # 前端「刷新」按钮带 refresh=1 强制失效 60s 缓存，避免点了没反应
+        if request.args.get("refresh") == "1":
+            query_cache.delete("dashboard_data")
         data = _get_dashboard_data()
         return jsonify({"success": True, "data": data})
     except Exception as e:

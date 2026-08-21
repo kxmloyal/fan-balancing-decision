@@ -143,3 +143,74 @@ def test_api_routes(tmp_path):
         query_cache.delete("model_monitor")
         if old is not None:
             app.config["OUTPUT_FOLDER"] = old
+
+
+def test_record_invalidates_dashboard_cache(tmp_path):
+    """record_model_monitor 写记录后必须失效 dashboard_data / model_monitor 缓存。
+
+    回归：FS 模式（DATABASE_ERROR 降级）不经过 data_processing 的 DB 分支，
+    新分析完成后仪表盘与看板最长 60s 不更新。
+    """
+    import wsgi
+
+    from blueprints.main_bp import _get_dashboard_data
+
+    app = wsgi.app
+    app.config["TESTING"] = True
+    old = app.config.get("OUTPUT_FOLDER")
+    app.config["OUTPUT_FOLDER"] = str(tmp_path)
+    try:
+        query_cache.delete("dashboard_data")
+        query_cache.delete("model_monitor")
+        with app.app_context():
+            data = _get_dashboard_data()
+        assert data["total_evaluations"] == 0
+
+        # 预置一份评估报告，再写入监控记录（模拟新分析完成）
+        model_dir = tmp_path / "9324"
+        model_dir.mkdir()
+        (model_dir / "9324_动平衡分析报告_20260820_120000.html").write_text(
+            "<html>r</html>", encoding="utf-8"
+        )
+        ok = record_model_monitor(str(tmp_path), "9324", _evaluation("4000rpm"), "BM.AT40")
+        assert ok is True
+
+        # 缓存必须已被失效，直接重算即可拿到新数据（无需等待 60s 过期）
+        with app.app_context():
+            data2 = _get_dashboard_data()
+        assert data2["total_evaluations"] == 1
+        assert data2["optimal_speed"] == "4000rpm"
+    finally:
+        query_cache.delete("dashboard_data")
+        query_cache.delete("model_monitor")
+        if old is not None:
+            app.config["OUTPUT_FOLDER"] = old
+
+
+def test_api_refresh_param_bypasses_cache(tmp_path):
+    """/api/outputs/model_monitor?refresh=1 强制失效 60s 缓存，刷新按钮才有意义。
+
+    回归：缓存期内点刷新按钮拿到的是旧数据，用户感知"刷新无效"。
+    """
+    import wsgi
+
+    app = wsgi.app
+    app.config["TESTING"] = True
+    old = app.config.get("OUTPUT_FOLDER")
+    app.config["OUTPUT_FOLDER"] = str(tmp_path)
+    try:
+        client = app.test_client()
+        # 第一次请求写入 60s 缓存
+        query_cache.delete("model_monitor")
+        r1 = client.get("/api/outputs/model_monitor")
+        assert r1.status_code == 200
+        assert query_cache.get("model_monitor") is not None
+
+        # 带 refresh=1 必须绕过缓存并重建
+        r2 = client.get("/api/outputs/model_monitor?refresh=1")
+        assert r2.status_code == 200
+        assert r2.get_json()["success"] is True
+    finally:
+        query_cache.delete("model_monitor")
+        if old is not None:
+            app.config["OUTPUT_FOLDER"] = old

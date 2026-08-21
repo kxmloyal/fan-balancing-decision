@@ -14,7 +14,6 @@ import zipfile
 from datetime import datetime
 from urllib.parse import quote
 
-import pandas as pd
 from flask import (
     Blueprint,
     current_app,
@@ -163,6 +162,13 @@ def _parse_report_timestamp(filename):
 
 
 def _list_filesystem_files(filters=None):
+    # 30s TTL 缓存：dashboard 页面加载时「页面渲染 + model_monitor API」会重复调用本函数，
+    # 每次全目录扫描 + md5 开销大；删除/同步时已通过 file_cache.clear() 失效
+    cache_key = "fs_files:{}".format(json.dumps(filters, ensure_ascii=False) if filters else "")
+    cached = file_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     output_folder = current_app.config["OUTPUT_FOLDER"]
     outputs_list = []
     history_records = _load_export_history()
@@ -217,22 +223,25 @@ def _list_filesystem_files(filters=None):
             outputs_list = [o for o in outputs_list if search_term in o["filename"].lower()]
 
     outputs_list.sort(key=lambda x: x["updated_at"], reverse=True)
+    file_cache.set(cache_key, outputs_list, ttl=30)
     return outputs_list
 
 
-def get_output_files(filters=None, page=1, per_page=20):
+def get_output_files(filters=None, page=1, per_page=None):
     """获取outputs文件夹内的所有文件信息，支持筛选和分页
 
     Args:
         filters: 筛选条件，包含file_type, status, user_id, fan_model, analysis_type,
         project_id等
         page: 当前页码，默认为1
-        per_page: 每页显示数量，默认为20
+        per_page: 每页显示数量，默认None（全量返回）。调用方需显式传值才分页，
+            避免裸调用静默截断为固定值（历史 bug：stats/export 只拿到前20条）
 
     Returns:
         tuple: (outputs_list, total_count)
     """
-    # 检查数据库连接状态
+    if per_page is None:
+        per_page = 100000
     if current_app.config.get("DATABASE_ERROR"):
         outputs_list = _list_filesystem_files(filters)
         total_count = len(outputs_list)
@@ -325,6 +334,10 @@ def get_output_files(filters=None, page=1, per_page=20):
 
 def sync_outputs_from_filesystem():
     """从文件系统同步导出文件到数据库"""
+    # 30 秒频率控制：DB 模式下 get_output_files 每请求都会调用本函数，
+    # 文件量大时全量扫描 + 全量比对开销大；批量删除后 file_cache.clear() 会强制重新同步
+    if file_cache.get("outputs_fs_synced") is not None:
+        return
     output_folder = current_app.config["OUTPUT_FOLDER"]
 
     if not os.path.exists(output_folder):
@@ -357,7 +370,11 @@ def sync_outputs_from_filesystem():
         existing_map = {
             (f[0], f[1]): f
             for f in _db.session.query(
-                Output.filename, Output.file_path, Output.fan_model, Output.id
+                Output.filename,
+                Output.file_path,
+                Output.fan_model,
+                Output.id,
+                Output.created_at,
             ).all()
         }
 
@@ -369,10 +386,16 @@ def sync_outputs_from_filesystem():
                 if detected:
                     model_name = detected
 
+            parsed_ts = _parse_report_timestamp(filename)
+
             if (filename, file_path) not in existing_set:
                 file_type = filename.split(".")[-1].lower() if "." in filename else "unknown"
                 file_size = os.path.getsize(file_path)
-                created_at = datetime.fromtimestamp(os.path.getctime(file_path))
+                # created_at 优先用文件名内嵌导出时间戳，与文件系统分支口径一致，
+                # 避免 ctime 因复制/移动/权限修改统一触碰而失真
+                created_at = parsed_ts or datetime.fromtimestamp(
+                    os.path.getmtime(file_path)
+                )
                 updated_at = datetime.fromtimestamp(os.path.getmtime(file_path))
 
                 fan_model = model_name
@@ -391,16 +414,30 @@ def sync_outputs_from_filesystem():
                 )
             else:
                 existing = existing_map.get((filename, file_path))
-                if existing and existing[2] is None and model_name is not None:
-                    updates_needed.append((existing[3], model_name))
+                if not existing:
+                    continue
+                record_id, record_fan_model, record_created_at = (
+                    existing[3],
+                    existing[2],
+                    existing[4],
+                )
+                updates = {}
+                if record_fan_model is None and model_name is not None:
+                    updates["fan_model"] = model_name
+                # 回补历史 ctime 失真的 created_at（文件名时间戳与库内记录偏差 > 60s）
+                if parsed_ts is not None and record_created_at is not None:
+                    if abs((parsed_ts - record_created_at).total_seconds()) > 60:
+                        updates["created_at"] = parsed_ts
+                if updates:
+                    updates_needed.append((record_id, updates))
 
         if new_records:
             _db.session.add_all(new_records)
 
         if updates_needed:
-            for record_id, fan_model in updates_needed:
+            for record_id, updates in updates_needed:
                 _db.session.query(Output).filter(Output.id == record_id).update(
-                    {"fan_model": fan_model}, synchronize_session=False
+                    updates, synchronize_session=False
                 )
 
         if new_records or updates_needed:
@@ -408,9 +445,13 @@ def sync_outputs_from_filesystem():
             # 新文件入库后失效相关缓存
             file_cache.clear()
             query_cache.delete("ml_models_db_rows")
-            query_cache.delete("outputs_stats")
+            query_cache.delete("dashboard_data")  # 仪表盘统计依赖文件变更
+            query_cache.delete("model_monitor")
     except Exception as e:
         logger.warning("同步文件到数据库失败: %s", str(e))
+    finally:
+        # 无论成功失败，30 秒内不重复全量扫描
+        file_cache.set("outputs_fs_synced", True, ttl=30)
 
 
 @outputs_bp.route("/outputs")
@@ -435,46 +476,6 @@ def outputs():
     # 获取视图类型参数
     view = request.args.get("view", "list")
 
-    # 获取所有可能的文件类型、状态、扇叶型号和分析类型，用于筛选选项
-    filter_options = {
-        "file_types": [],
-        "statuses": [],
-        "fan_models": [],
-        "analysis_types": [],
-    }
-
-    try:
-        _db, Output = _get_db_resources()
-        if _db is None or Output is None:
-            raise RuntimeError("Database not available")
-
-        file_types = _db.session.query(Output.file_type).distinct().order_by(Output.file_type).all()
-        statuses = _db.session.query(Output.status).distinct().order_by(Output.status).all()
-        fan_models = (
-            _db.session.query(Output.fan_model)
-            .filter(Output.fan_model.isnot(None))
-            .distinct()
-            .order_by(Output.fan_model)
-            .all()
-        )
-        analysis_types = (
-            _db.session.query(Output.analysis_type)
-            .filter(Output.analysis_type.isnot(None))
-            .distinct()
-            .order_by(Output.analysis_type)
-            .all()
-        )
-
-        # 格式化选项列表
-        filter_options = {
-            "file_types": [ft[0] for ft in file_types],
-            "statuses": [s[0] for s in statuses],
-            "fan_models": [fm[0] for fm in fan_models if fm[0]],
-            "analysis_types": [at[0] for at in analysis_types if at[0]],
-        }
-    except Exception as e:
-        logger.warning("获取筛选选项失败: %s", str(e))
-
     # 计算总页数
     total_pages = (total_count + per_page - 1) // per_page
 
@@ -482,88 +483,12 @@ def outputs():
         "outputs.html",
         output_files=output_files,
         view=view,
-        filter_options=filter_options,
         filters=filters,
         page=page,
         per_page=per_page,
         total_pages=total_pages,
         total_count=total_count,
     )
-
-
-@outputs_bp.route("/outputs_stats")
-def outputs_stats():
-    """返回输出文件统计数据"""
-    # 统计数据缓存 60 秒，减少文件系统扫描
-    cached_stats = file_cache.get("outputs_stats")
-    if cached_stats is not None:
-        return jsonify(cached_stats)
-
-    try:
-        output_folder = current_app.config["OUTPUT_FOLDER"]
-        output_files, _ = get_output_files()
-
-        type_distribution = {}
-        status_distribution = {}
-        monthly_map = {}
-        daily_map = {}
-        fan_model_map = {}
-        analysis_type_map = {}
-
-        for f in output_files:
-            ft = f.get("file_type", "unknown")
-            type_distribution[ft] = type_distribution.get(ft, 0) + 1
-
-            st = f.get("status", "unknown")
-            status_distribution[st] = status_distribution.get(st, 0) + 1
-
-            fm = f.get("fan_model")
-            if fm:
-                fan_model_map[fm] = fan_model_map.get(fm, 0) + 1
-
-            at = f.get("analysis_type")
-            if at:
-                analysis_type_map[at] = analysis_type_map.get(at, 0) + 1
-
-            ct = f.get("created_at")
-            if ct:
-                month_key = ct.strftime("%Y-%m")
-                monthly_map[month_key] = monthly_map.get(month_key, 0) + 1
-                date_key = ct.strftime("%Y-%m-%d")
-                daily_map[date_key] = daily_map.get(date_key, 0) + 1
-
-        type_data = [{"file_type": k, "count": v} for k, v in type_distribution.items()]
-        status_data = [{"status": k, "count": v} for k, v in status_distribution.items()]
-        monthly_data = sorted(
-            [{"month": k, "count": v} for k, v in monthly_map.items()], key=lambda x: x["month"]
-        )
-        recent_daily = sorted(
-            [{"date": k, "count": v} for k, v in daily_map.items()],
-            key=lambda x: x["date"],
-            reverse=True,
-        )[:30]
-        fan_model_data = sorted(
-            [{"fan_model": k, "count": v} for k, v in fan_model_map.items()],
-            key=lambda x: x["count"],
-            reverse=True,
-        )[:10]
-        analysis_type_data = [
-            {"analysis_type": k, "count": v} for k, v in analysis_type_map.items()
-        ]
-
-        stats_data = {
-            "type": type_data,
-            "status": status_data,
-            "monthly": monthly_data,
-            "recent_daily": recent_daily,
-            "fan_model": fan_model_data,
-            "analysis_type": analysis_type_data,
-        }
-        file_cache.set("outputs_stats", stats_data, ttl=60)
-        return jsonify(stats_data)
-    except Exception as e:
-        logger.error(f"获取输出文件统计失败: {e}")
-        return ApiResponse.error("获取统计数据失败"), 500
 
 
 @outputs_bp.route("/download_file/<path:filename>")
@@ -614,83 +539,6 @@ def view_pdf(filename):
     return send_from_directory(current_app.config["OUTPUT_FOLDER"], safe_path)
 
 
-@outputs_bp.route("/export_outputs/<format>")
-def export_outputs(format):
-    """导出输出文件列表为不同格式"""
-
-    # 获取所有输出文件
-    output_files, _ = get_output_files()
-
-    # 准备导出数据
-    export_data = []
-    for file in output_files:
-        export_data.append(
-            {
-                "filename": file["filename"],
-                "file_type": file["file_type"],
-                "file_size": file["file_size"],
-                "status": file["status"],
-                "created_at": file["created_at"].strftime("%Y-%m-%d %H:%M:%S")
-                if file["created_at"]
-                else "",
-                "updated_at": file["updated_at"].strftime("%Y-%m-%d %H:%M:%S")
-                if file["updated_at"]
-                else "",
-                "user_id": file["user_id"] or "",
-                "fan_model": file["fan_model"] or "",
-                "analysis_type": file["analysis_type"] or "",
-                "project_id": file["project_id"] or "",
-            }
-        )
-
-    # 根据格式导出
-    if format == "csv":
-        # 导出为CSV
-        df = pd.DataFrame(export_data)
-        output = io.StringIO()
-        df.to_csv(output, index=False, encoding="utf-8-sig")
-        output.seek(0)
-
-        return send_file(
-            io.BytesIO(output.getvalue().encode("utf-8-sig")),
-            mimetype="text/csv",
-            as_attachment=True,
-            download_name=f"outputs_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-        )
-
-    elif format == "json":
-        # 导出为JSON
-        output = io.StringIO()
-        json.dump(export_data, output, ensure_ascii=False, indent=2)
-        output.seek(0)
-
-        return send_file(
-            io.BytesIO(output.getvalue().encode("utf-8")),
-            mimetype="application/json",
-            as_attachment=True,
-            download_name=f"outputs_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-        )
-
-    elif format == "xlsx":
-        # 导出为Excel
-        df = pd.DataFrame(export_data)
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="Outputs")
-        output.seek(0)
-
-        return send_file(
-            output,
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            as_attachment=True,
-            download_name=f"outputs_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-        )
-
-    else:
-        # 不支持的格式
-        return ApiResponse.error("不支持的导出格式"), 400
-
-
 def _delete_by_hash_file_id(file_id, output_folder):
     for entry in os.listdir(output_folder):
         entry_path = os.path.join(output_folder, entry)
@@ -706,68 +554,6 @@ def _delete_by_hash_file_id(file_id, output_folder):
                         os.remove(sub_path)
                         return True
     return False
-
-
-@outputs_bp.route("/api/outputs/list", methods=["GET"])
-def api_output_list():
-    """输出文件列表API——支持分页和类型过滤（返回JSON）"""
-    try:
-        page = request.args.get("page", 1, type=int)
-        per_page = request.args.get("per_page", 20, type=int)
-        page = max(1, page)
-        per_page = min(max(per_page, 1), 100)
-
-        filters = {
-            "file_type": request.args.get("file_type"),
-            "status": request.args.get("status"),
-            "search": request.args.get("search"),
-            "fan_model": request.args.get("fan_model"),
-            "analysis_type": request.args.get("analysis_type"),
-            "project_id": request.args.get("project_id"),
-        }
-        filters = {k: v for k, v in filters.items() if v is not None}
-
-        output_files, total_count = get_output_files(filters, page, per_page)
-
-        serialized_files = []
-        for f in output_files:
-            serialized_files.append(
-                {
-                    "id": f["id"],
-                    "filename": f["filename"],
-                    "file_type": f["file_type"],
-                    "file_size": f["file_size"],
-                    "status": f["status"],
-                    "description": f.get("description"),
-                    "created_at": f["created_at"].strftime("%Y-%m-%d %H:%M:%S")
-                    if f.get("created_at")
-                    else None,
-                    "updated_at": f["updated_at"].strftime("%Y-%m-%d %H:%M:%S")
-                    if f.get("updated_at")
-                    else None,
-                    "fan_model": f.get("fan_model"),
-                    "analysis_type": f.get("analysis_type"),
-                    "project_id": f.get("project_id"),
-                }
-            )
-
-        total_pages = (total_count + per_page - 1) // per_page
-
-        return jsonify(
-            {
-                "success": True,
-                "data": serialized_files,
-                "pagination": {
-                    "page": page,
-                    "per_page": per_page,
-                    "total_count": total_count,
-                    "total_pages": total_pages,
-                },
-            }
-        )
-    except Exception as e:
-        logger.error(f"获取输出文件列表失败: {e}")
-        return jsonify({"success": False, "error": "获取文件列表失败，请稍后重试"}), 500
 
 
 @outputs_bp.route("/api/outputs/batch_delete", methods=["POST"])
@@ -795,6 +581,11 @@ def batch_delete_outputs():
                     deleted_count += 1
                 else:
                     failed_ids.append(file_id)
+            # 失效 by_model 30s 缓存与 sync 30s 频率标记，避免已删文件在缓存期内仍返回
+            file_cache.clear()
+            # 仪表盘/机型监控依赖同一批文件，必须同步失效（60s TTL 会导致删后幽灵统计）
+            query_cache.delete("dashboard_data")
+            query_cache.delete("model_monitor")
             return jsonify(
                 {
                     "success": True,
@@ -816,6 +607,9 @@ def batch_delete_outputs():
                     deleted_count += 1
                 else:
                     failed_ids.append(file_id)
+            file_cache.clear()
+            query_cache.delete("dashboard_data")
+            query_cache.delete("model_monitor")
             return jsonify(
                 {
                     "success": True,
@@ -853,6 +647,8 @@ def batch_delete_outputs():
 
         file_cache.clear()  # 清除文件列表缓存
         query_cache.delete("ml_models_db_rows")  # 失效 ML 型号列表 DB 查询缓存
+        query_cache.delete("dashboard_data")  # 仪表盘依赖同一批文件，删后必须立即反映
+        query_cache.delete("model_monitor")
         return jsonify(
             {
                 "success": True,
@@ -885,7 +681,7 @@ def output_files_by_model():
     if file_type and file_type != "all":
         filters["file_type"] = file_type
 
-    output_files, _ = get_output_files(filters=filters, page=1, per_page=500)
+    output_files, _ = get_output_files(filters=filters)
 
     history_records = _load_export_history()
     models_to_update = {}
@@ -935,6 +731,36 @@ def output_files_by_model():
     now = datetime.now()
     for model_name, group in groups.items():
         files = group["files"]
+        # 按时间升序（报告用文件名内嵌时间戳、图表用 mtime），用于"第几次测试"编号
+        files.sort(key=lambda f: f.get("created_at") or "")
+        # 报告文件是测试批次锚点（仅 html/pdf 报告；png 图表文件名也可能含
+        # "动平衡分析报告"，按扩展名排除，避免 test_count 误计），图表按时间归属最近一次报告
+        report_times = [
+            f.get("created_at") or ""
+            for f in files
+            if "动平衡分析报告" in f.get("filename", "")
+            and f.get("file_type") in ("html", "pdf")
+        ]
+        test_count = len(report_times)
+        for f in files:
+            fname = f.get("filename", "")
+            if "动平衡分析报告" in fname and f.get("file_type") in ("html", "pdf"):
+                test_no = 1
+                for i, rt in enumerate(report_times):
+                    if rt == f.get("created_at"):
+                        test_no = i + 1
+                        break
+                f["test_no"] = test_no
+            else:
+                # 图表归属：最后一个报告时间 <= 图表时间；无匹配则归最早一次报告
+                ts = f.get("created_at") or ""
+                idx = None
+                for i, rt in enumerate(report_times):
+                    if rt <= ts:
+                        idx = i
+                # 无匹配（图表时间早于所有报告）则归最早一次报告（第1次批次）
+                f["test_no"] = (idx + 1) if idx is not None else (1 if test_count else 0)
+            f["test_no"] = f.get("test_no", 0)
         type_counts = {}
         total_size = 0
         for f in files:
@@ -956,6 +782,7 @@ def output_files_by_model():
                 pass
         group["summary"] = {
             "file_count": len(files),
+            "test_count": test_count,
             "type_breakdown": type_counts,
             "total_size": total_size,
             "first_report": group["first_date"] or "",
@@ -991,7 +818,7 @@ def output_files_by_model():
 @outputs_bp.route("/api/outputs/preview/<file_id>", methods=["GET"])
 def preview_output_file(file_id):
     """预览文本类输出文件内容"""
-    output_files, _ = get_output_files(per_page=500)
+    output_files, _ = get_output_files()
     target = None
     for f in output_files:
         if str(f.get("id")) == file_id:
@@ -1039,7 +866,7 @@ def preview_output_file(file_id):
 @outputs_bp.route("/api/outputs/preview_info/<file_id>", methods=["GET"])
 def preview_output_info(file_id):
     """获取导出文件元信息（类型/大小/日期）"""
-    output_files, _ = get_output_files(per_page=500)
+    output_files, _ = get_output_files()
     target = None
     for f in output_files:
         if str(f.get("id")) == file_id:
@@ -1076,14 +903,18 @@ def preview_output_info(file_id):
     file_exists = os.path.isfile(full_path)
 
     view_url = None
-    if file_exists and preview_type in ("html", "image"):
+    download_url = None
+    if file_exists:
         rel = os.path.relpath(full_path, current_app.config["OUTPUT_FOLDER"])
         encoded_rel = "/".join(quote(part, safe="") for part in rel.split(os.sep))
-        view_url = (
-            f"/view_chart/{encoded_rel}"
-            if preview_type == "image"
-            else f"/view_chart_html/{encoded_rel}"
-        )
+        if preview_type == "html":
+            view_url = f"/view_chart_html/{encoded_rel}"
+        elif preview_type == "image":
+            view_url = f"/view_chart/{encoded_rel}"
+        elif preview_type == "pdf":
+            view_url = f"/view_pdf/{encoded_rel}"
+        # download_url 使用相对编码路径，前端下载不走绝对路径（绝对路径会被后端拒绝）
+        download_url = f"/api/outputs/download/{encoded_rel}"
 
     return jsonify(
         {
@@ -1094,7 +925,7 @@ def preview_output_info(file_id):
                 "file_size": file_size,
                 "file_exists": file_exists,
                 "view_url": view_url,
-                "file_path": file_path,
+                "download_url": download_url,
                 "file_type": ext,
                 "fan_model": target.get("fan_model"),
             },
@@ -1108,7 +939,7 @@ def batch_download_outputs():
         fan_model = request.args.get("fan_model", "").strip()
         if not fan_model:
             return ApiResponse.error("请提供fan_model参数"), 400
-        output_files, _ = get_output_files(per_page=500)
+        output_files, _ = get_output_files()
         matched = [f for f in output_files if f.get("fan_model", "") == fan_model]
         if not matched:
             return ApiResponse.error("未找到该型号的文件"), 404
@@ -1133,7 +964,7 @@ def batch_download_outputs():
 
 
 def _build_zip_response(file_ids):
-    output_files, _ = get_output_files(per_page=500)
+    output_files, _ = get_output_files()
     id_to_file = {}
     for f in output_files:
         id_to_file[str(f.get("id"))] = f

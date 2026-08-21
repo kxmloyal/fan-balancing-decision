@@ -24,9 +24,17 @@
         return (bytes / 1048576).toFixed(1) + ' MB';
     }
 
+    function parseDateStr(dateStr) {
+        if (!dateStr) return null;
+        // 兼容 Safari：不支持 "YYYY-MM-DD HH:MM:SS" 空格分隔格式，需替换为 T
+        let d = new Date(String(dateStr).replace(' ', 'T'));
+        return isNaN(d.getTime()) ? null : d;
+    }
+
     function formatDate(dateStr) {
         if (!dateStr) return '--';
-        let d = new Date(dateStr);
+        let d = parseDateStr(dateStr);
+        if (!d) return '--';
         let now = new Date();
         let diff = now - d;
         if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前';
@@ -39,7 +47,8 @@
 
     function formatDateShort(dateStr) {
         if (!dateStr) return '--';
-        let d = new Date(dateStr);
+        let d = parseDateStr(dateStr);
+        if (!d) return '--';
         return String(d.getMonth() + 1).padStart(2, '0') + '-' +
             String(d.getDate()).padStart(2, '0');
     }
@@ -55,7 +64,7 @@
         let tags = '';
         Object.keys(breakdown).forEach(function(t) {
             let c = colors[t] || '#6b7280';
-            tags += '<span class="rm-type-tag" style="background:' + c + '1a;color:' + c + ';border:1px solid ' + c + '40">' + t.toUpperCase() + '×' + breakdown[t] + '</span>';
+            tags += '<span class="rm-type-tag" style="background:' + c + '1a;color:' + c + ';border:1px solid ' + c + '40">' + escapeHtml(t.toUpperCase()) + '×' + breakdown[t] + '</span>';
         });
         return tags;
     }
@@ -148,9 +157,11 @@
         if (groups.length > 0) {
             let maxDate = null;
             groups.forEach(function(g) {
-                if (g.created_at) {
-                    let d = new Date(g.created_at);
-                    if (!maxDate || d > maxDate) maxDate = d;
+                // 后端返回的是 g.summary.latest_report（分组级最新文件时间），
+                // 原实现读 g.created_at（后端未返回该字段）导致统计卡恒为 "--"
+                if (g.summary && g.summary.latest_report) {
+                    let d = parseDateStr(g.summary.latest_report);
+                    if (d && (!maxDate || d > maxDate)) maxDate = d;
                 }
             });
             if (maxDate) latestDate = formatDate(maxDate.toISOString());
@@ -172,12 +183,13 @@
             html += '      <div class="rm-model-name" title="' + escapeHtml(group.model) + '">';
             html += '        <span class="rm-model-health ' + (summary.health || 'old') + '" title="' + healthLabel(summary.health) + '"></span>';
             html += escapeHtml(group.model);
-            let completeness = checkModelCompleteness(summary.type_breakdown, (group.files || []).length);
+            let completeness = checkModelCompleteness(summary.orig_type_breakdown || summary.type_breakdown, (group.files || []).length);
             if (completeness) {
                 html += '        <span class="rm-model-incomplete" title="' + completeness.join('；') + '"><i class="bi bi-exclamation-triangle-fill"></i>' + completeness.join('；') + '</span>';
             }
             html += '      </div>';
             html += '      <div class="rm-model-meta">' + files.length + ' 份报告';
+            if (summary.test_count) html += ' &middot; ' + summary.test_count + ' 次测试';
             if (summary.total_size) html += ' &middot; ' + formatSize(summary.total_size);
             if (summary.first_report && summary.latest_report) {
                 html += ' &middot; ' + formatDateShort(summary.first_report) + ' ~ ' + formatDateShort(summary.latest_report);
@@ -193,13 +205,31 @@
             html += '    <i class="bi bi-chevron-down rm-model-chevron"></i>';
             html += '  </div>';
             html += '  <div class="rm-model-body">';
-            html += '    <div class="rm-file-grid">';
 
+            // 按测试批次分组渲染：同一次测试的报告+图表归为一组，带批次标题
+            let batchMap = {};
             files.forEach(function(file) {
-                html += renderFileCard(file, group.model);
+                let key = file.test_no || 0;
+                if (!batchMap[key]) batchMap[key] = [];
+                batchMap[key].push(file);
+            });
+            let batchKeys = Object.keys(batchMap).map(Number).sort(function(a, b) { return a - b; });
+            batchKeys.forEach(function(key) {
+                let batchFiles = batchMap[key];
+                let batchTitle = key > 0 ? '第 ' + key + ' 次测试' : '未归类文件';
+                let batchTime = '';
+                let reportInBatch = batchFiles.find(function(f) { return f.filename.indexOf('动平衡分析报告') >= 0; });
+                if (reportInBatch && reportInBatch.created_at) batchTime = ' · ' + formatDateShort(reportInBatch.created_at);
+                html += '<div class="rm-test-batch" data-test-no="' + key + '">';
+                html += '  <div class="rm-test-batch-title"><i class="bi bi-flask me-1"></i>' + escapeHtml(batchTitle) + batchTime + '<span class="rm-test-batch-count">' + batchFiles.length + ' 个文件</span></div>';
+                html += '  <div class="rm-file-grid">';
+                batchFiles.forEach(function(file) {
+                    html += renderFileCard(file, group.model);
+                });
+                html += '  </div>';
+                html += '</div>';
             });
 
-            html += '    </div>';
             html += '  </div>';
             html += '</div>';
         });
@@ -261,6 +291,8 @@
             let clone = JSON.parse(JSON.stringify(g));
             clone.files = filteredFiles;
             if (clone.summary) {
+                // 保留原始类型分布，供型号完整性判定使用（过滤视图下 type_breakdown 已被改写）
+                clone.summary.orig_type_breakdown = g.summary.type_breakdown;
                 let tb = {};
                 tb[filterType] = filteredFiles.length;
                 clone.summary.type_breakdown = tb;
@@ -370,18 +402,23 @@
         if (model && model !== '未分类') {
             downloadUrl = '/api/outputs/download/' + encodeURIComponent(model + '/' + file.filename);
         }
-        return '<div class="rm-file-card" data-file-id="' + escapeHtml(file.id) + '" data-file-name="' + escapeHtml(file.filename) + '" data-file-path="' + escapeHtml(file.file_path || '') + '" data-file-type="' + escapeHtml(iconType) + '" data-model="' + escapeHtml(model) + '" data-download-url="' + escapeHtml(downloadUrl) + '">' +
+        // 测试批次标签：报告/图表文件都带 test_no（1=第1次测试），无批次不显示
+        let testBadge = '';
+        if (file.test_no) {
+            testBadge = '<span class="rm-test-badge" title="第 ' + file.test_no + ' 次测试">第' + file.test_no + '次</span>';
+        }
+        return '<div class="rm-file-card" data-file-id="' + escapeHtml(file.id) + '" data-file-name="' + escapeHtml(file.filename) + '" data-file-type="' + escapeHtml(iconType) + '" data-model="' + escapeHtml(model) + '" data-download-url="' + escapeHtml(downloadUrl) + '">' +
             '<input type="checkbox" class="rm-file-checkbox form-check-input me-2" data-file-id="' + escapeHtml(file.id) + '">' +
             '<div class="rm-file-icon ' + iconType + '"><i class="' + iconClass + '"></i></div>' +
             '<div class="rm-file-info">' +
-                '<div class="rm-file-name" title="' + escapeHtml(file.filename) + '">' + escapeHtml(file.filename) + '</div>' +
+                '<div class="rm-file-name" title="' + escapeHtml(file.filename) + '">' + escapeHtml(file.filename) + testBadge + '</div>' +
                 '<div class="rm-file-meta">' +
                     '<span>' + formatSize(file.file_size) + '</span>' +
                     '<span>' + formatDate(file.created_at) + '</span>' +
                 '</div>' +
             '</div>' +
             '<div class="rm-file-actions">' +
-                '<button class="btn-icon preview-btn" title="预览" data-file-id="' + escapeHtml(file.id) + '" data-file-name="' + escapeHtml(file.filename) + '" data-file-type="' + escapeHtml(iconType) + '" data-file-path="' + escapeHtml(file.file_path || '') + '" data-download-url="' + escapeHtml(downloadUrl) + '"><i class="bi bi-eye"></i></button>' +
+                '<button class="btn-icon preview-btn" title="预览" data-file-id="' + escapeHtml(file.id) + '" data-file-name="' + escapeHtml(file.filename) + '" data-file-type="' + escapeHtml(iconType) + '" data-download-url="' + escapeHtml(downloadUrl) + '"><i class="bi bi-eye"></i></button>' +
                 '<a class="btn-icon download-btn" title="下载" href="' + escapeHtml(downloadUrl) + '" download><i class="bi bi-download"></i></a>' +
                 '<button class="btn-icon danger delete-btn" title="删除" data-file-id="' + escapeHtml(file.id) + '"><i class="bi bi-trash"></i></button>' +
             '</div>' +
@@ -457,8 +494,7 @@
                     let fileId = card.dataset.fileId;
                     let filename = card.dataset.fileName;
                     let fileType = card.dataset.fileType;
-                    let filePath = card.dataset.filePath;
-                    openPreview(fileId, filename, fileType, filePath);
+                    openPreview(fileId, filename, fileType, card.dataset.downloadUrl);
                 }
             });
         });
@@ -484,7 +520,7 @@
                 e.stopPropagation();
                 e.preventDefault();
                 let fileId = btn.dataset.fileId;
-                openPreview(fileId, btn.dataset.fileName, btn.dataset.fileType, btn.dataset.filePath);
+                openPreview(fileId, btn.dataset.fileName, btn.dataset.fileType, btn.dataset.downloadUrl);
             });
         });
 
@@ -536,7 +572,7 @@
         });
     }
 
-    function openPreview(fileId, filename, fileType, filePath) {
+    function openPreview(fileId, filename, fileType, downloadUrl) {
         let modal = new bootstrap.Modal(document.getElementById('previewModal'));
         let modalTitle = document.getElementById('previewTitle');
         let modalBody = document.getElementById('previewBody');
@@ -545,8 +581,7 @@
         modalTitle.innerHTML = '<i class="bi bi-eye me-2"></i>' + escapeHtml(filename);
         modalBody.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">正在加载预览...</p></div>';
 
-        let downloadUrl = '#';
-        downloadBtn.href = downloadUrl;
+        downloadBtn.href = '#';
 
         fetchFn('/api/outputs/preview_info/' + fileId)
             .then(function(r) { return r.json(); })
@@ -554,14 +589,11 @@
                 let info = (infoResp.success && infoResp.data) ? infoResp.data : {};
                 let previewType = info.preview_type || fileType;
                 let viewUrl = info.view_url || '';
+                let dlUrl = info.download_url || '';
 
-                if (info.file_path && info.file_path !== filePath) {
-                    filePath = info.file_path;
-                }
-
-                if (viewUrl) {
-                    downloadBtn.href = '/api/outputs/download/' + encodeURIComponent(info.file_path || info.filename || filename);
-                }
+                // 使用后端返回的相对路径下载链接；原实现用绝对路径 file_path，
+                // 会被后端 /api/outputs/download 以"路径不合法"拒绝
+                if (dlUrl) downloadBtn.href = dlUrl;
 
                 if (previewType === 'html') {
                     if (viewUrl) {
@@ -576,13 +608,8 @@
                         modalBody.innerHTML = '<div class="rm-preview-content text-center py-5"><p class="text-muted">无法获取文件预览路径</p></div>';
                     }
                 } else if (previewType === 'pdf') {
-                    if (filePath && filePath !== '#') {
-                        let pdfRelPath = filePath;
-                        let pdfIdx = filePath.indexOf('/outputs/');
-                        if (pdfIdx >= 0) {
-                            pdfRelPath = filePath.substring(pdfIdx + '/outputs/'.length);
-                        }
-                        previewAsPdf('/view_pdf/' + encodeURIComponent(pdfRelPath), modalBody);
+                    if (viewUrl) {
+                        previewAsPdf(viewUrl, modalBody);
                     } else {
                         modalBody.innerHTML = '<div class="rm-preview-content text-center py-5"><p class="text-muted">无法获取PDF文件路径</p></div>';
                     }
@@ -594,23 +621,18 @@
                 }
             })
             .catch(function() {
-                let relPath = filename;
-                if (filePath && filePath !== '#') {
-                    let idx = filePath.indexOf('/outputs/');
-                    if (idx >= 0) {
-                        relPath = filePath.substring(idx + '/outputs/'.length);
-                    }
+                // 后端 preview_info 不可用时降级：从卡片相对下载链接提取路径
+                let relPath = downloadUrl || encodeURIComponent(filename);
+                if (relPath.indexOf('/api/outputs/download/') === 0) {
+                    relPath = relPath.substring('/api/outputs/download/'.length);
                 }
 
                 if (fileType === 'html') {
-                    let viewUrl = '/view_chart_html/' + encodeURIComponent(relPath);
-                    previewAsIframe(viewUrl, modalBody);
+                    previewAsIframe('/view_chart_html/' + relPath, modalBody);
                 } else if (['png', 'jpg', 'jpeg', 'svg', 'webp'].indexOf(fileType) >= 0) {
-                    let viewUrl = '/view_chart/' + encodeURIComponent(relPath);
-                    previewAsImage(viewUrl, modalBody);
+                    previewAsImage('/view_chart/' + relPath, modalBody);
                 } else if (fileType === 'pdf') {
-                    let pdfViewUrl = '/view_pdf/' + encodeURIComponent(relPath);
-                    previewAsPdf(pdfViewUrl, modalBody);
+                    previewAsPdf('/view_pdf/' + relPath, modalBody);
                 } else if (['csv', 'json', 'txt', 'log', 'md'].indexOf(fileType) >= 0) {
                     previewAsText(fileId, fileType, modalBody);
                 } else {
@@ -684,6 +706,9 @@
             if (resp.success) {
                 _selectedFiles.clear();
                 updateBatchBar();
+                // 删除后必须清空数据缓存：loadReportData 在 _dataCache 命中时直接渲染缓存，
+                // 不清空会导致已删除文件仍显示在列表中
+                _dataCache = null;
                 window.showToast('success', '已成功删除 ' + fileIds.length + ' 个文件');
                 loadReportData();
             } else {
