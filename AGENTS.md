@@ -690,7 +690,7 @@ Hero 区域 `btn-outline-light` 按钮（白字透明底白边框）在浅色背
 | `blueprints/settings_bp.py` | 属性bug修复 |
 | `blueprints/database_bp.py` | 去重超时代码 |
 
-## 累计修复：312 项（64轮）
+## 累计修复：317 项（65轮）
 
 | 轮次 | 内容 | 数量 |
 |------|------|------|
@@ -745,8 +745,9 @@ Hero 区域 `btn-outline-light` 按钮（白字透明底白边框）在浅色背
 | 第六十一轮 | outputs 报告管理页全功能评估整改：P1-1 预览弹窗下载按钮改相对路径（preview_info 补 download_url，原绝对路径 file_path 被后端"路径不合法"拒绝）；P1-2 分组视图统计卡改读 summary.latest_report（原读不存在的 g.created_at 恒为"--"）；P1-3 get_output_files 默认 per_page=None 全量返回（原默认20静默截断，stats/export 只拿前20条）；P1-4 DB 分支 sync created_at 改文件名内嵌时间戳 + 偏差>60s 回补历史记录（与 FS 分支口径一致）；P2-1 删除死端点 outputs_stats/export_outputs/api/outputs/list + 清理 pandas 死 import；P2-3 移除 filter_options 死代码（路由3次DB查询白跑）、删错缓存 query_cache.delete("outputs_stats")、f-string 日志清理；P2-4 DB 模式 sync 加 30s 频率控制（file_cache ttl=30）；P2-6 日期解析 Safari 兼容（空格→T）+ 扩展名标签 escapeHtml 转义；P2-9 卡片移除 data-file-path 绝对路径泄漏、过滤态完整性失真修复（orig_type_breakdown 保留供完整性判定）；新增 9 回归用例（103 测试全过） | 9项 |
 | 第六十二轮 | 数据仪表盘全维度评估整改：P1-1 batch_delete 三个分支补 query_cache.delete(dashboard_data/model_monitor)（原只清 file_cache，删后仪表盘/看板最长60s幽灵统计）；P1-2 record_model_monitor 写记录后统一失效缓存，覆盖 FS 模式新分析（原 FS 分支不经过 data_processing 的 DB 失效逻辑）；P1-3 sync_outputs_from_filesystem 入库变更后同步失效看板缓存；P1-4 dashboard/model_monitor API 支持 ?refresh=1 强制失效 60s 缓存，前端刷新按钮带参（原缓存期内点刷新拿旧数据"点了没反应"）；P2-1 _list_filesystem_files 加 30s file_cache（dashboard 页面加载双扫描：页面渲染+model_monitor API 各扫一次）并同步在 record_model_monitor 清 file_cache 防新报告 30s 不可见；P2-2 model-monitor.js 卡片 data-* 属性用 escapeAttr 补引号转义；新增 3 回归用例（106 测试全过） | 8项 |
 | 第六十三轮 | dashboard 图表视觉遮挡修复：P1-1 dashboard.css 覆盖全局 .chart-container（原 style.css padding:20px+overflow:hidden 叠加 dashboard.css 仅改 min-height，Plotly 默认 450px 高度溢出 330px 容器底部被裁，桌面 330px/移动 300px 固定高度）；P1-2 dashboard.js 三个图显式 height:300 与容器一致（原 responsive 只响宽度不响高度）+ 饼图 textposition:outside 边距 20px→60/40/60/40（外部型号标签不再被 svg 裁剪）+ 柱状图 b 边距 40→50/55、转速图 tickangle:-20、颜色数组 6→10 色（>6 型号/转速时后段无色）；全量 106 测试全过 | 2项 |
-| 第六十四轮 | outputs 区分"第几次测试"批次：报告文件为批次锚点（仅 html/pdf 按扩展名过滤，避免 png 图表文件名含"动平衡分析报告"误计 test_count），报告按文件名内嵌时间戳升序编号第1..N次，图表按 created_at(mtime) ≤ 报告时间归属最近批次、早于所有报告回退归第1次批次（原实现落最新批次与注释/测试断言不一致）；outputs.js 组内按 test_no 分组渲染批次标题（第N次测试+文件数）+ 文件卡"第N次"角标 + 分组头部"N次测试"；outputs.css 批次标题/角标样式；新增 2 回归用例（两代报告+图表批次区分、png 扩展名不误计），修正 png 回退断言（107 测试全过） | 5项 |
-| **合计** | | **312项** |
+| 第六十四轮 | outputs 区分"第几次测试"批次：报告文件为批次锚点（仅 html/pdf 按扩展名过滤，避免 png 图表文件名含"动平衡分析报告"误计 test_count），报告按文件名内嵌时间戳升序编号第1..N次，图表按 created_at(mtime) ≤ 报告时间归属最近批次、早于所有报告回退归第1次批次（原实现落最新批次与注释/测试断言不一致）；outputs.js 组内按 test_no 分组渲染批次标题（第N次测试+文件数）+ 文件卡"第N次"角标 + 分组头部"N次测试"；outputs.css 批次标题/角标样式；补充：有型号但无报告锚点（分析未导出报告）的文件 test_no 归 1 视为第1次测试，仅"未分类"组保持 0 显示"未归类文件"，前端批次时间无报告时回退批次内最早文件（原 1118 型无报告整组落入"未归类文件"造成困惑）；新增 3 回归用例（两代报告+图表批次区分、png 扩展名不误计、无报告组归第1次批次），修正 png 回退断言（108 测试全过） | 8项 |
+| 第六十五轮 | 导出报告"安全验证失败，请刷新页面后重试"根因修复：日志定位 `The CSRF session token is missing` + `PermissionError: flask_session_new/<sid>`（EACCES）；根因是本地/运维测试进程(ystech)与生产 gunicorn(www) 交叉写入同一会话目录，flask_session 新建文件默认 mode 600 仅属主可读，www 读取失败 → session 空 → CSRF 比对无服务端 token → 400；修复：wsgi.py 增加 `SESSION_FILE_MODE=0o666`（flask_session 0.5.0 从 config 读取，setdefault 384）使新建会话文件 www 可读写 + 删除 2 个存量 600 权限异常会话文件；冒烟验证：GET/→POST /export_report 200 附件下载 + sudo -u www 实际读取 666 会话文件成功（修复前 EACCES）；全量 108 测试全过 | 2项 |
+| **合计** | | **317项** |
 
 ---
 

@@ -121,6 +121,9 @@ app.config["PERMANENT_SESSION_LIFETIME"] = 3600
 app.config["SESSION_FILE_DIR"] = os.environ.get("SESSION_FILE_DIR") or os.path.join(
     BASE_DIR, "flask_session_new"
 )
+# 会话文件权限 666（组/其他可读写）：避免 gunicorn worker(www) 与运维/测试进程(ystech)
+# 交叉写入后权限 600 导致 www 读取失败 → session 为空 → CSRF token 校验失败
+app.config["SESSION_FILE_MODE"] = 0o666
 
 session_dir = app.config["SESSION_FILE_DIR"]
 os.makedirs(session_dir, exist_ok=True)
